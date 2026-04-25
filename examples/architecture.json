@@ -9,6 +9,10 @@
     "tests",
     "utils"
   ],
+  "exclude_modules": [
+    "crate::tests::integration",
+    "crate::utils::helpers"
+  ],
   "access_rules": [
     "NoLayerCyclicDependencies",
     "NoModuleCyclicDependencies",

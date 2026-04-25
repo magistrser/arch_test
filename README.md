@@ -16,6 +16,7 @@ It applies static analyses on the specified rust project to extract use relation
 * Detect cyclic dependencies level wise or module wise
 * Prohibit parent access
 * Define layer relationships like `MayNotAccess`, `MayOnlyAccess`, `MyNotBeAccessedBy`, `MayOnlyBeAccessedBy`
+* Exclude specific modules from architecture checks (supports exact match and prefix matching)
 * And more, please consult the documentation.
 
 ## Install
@@ -36,6 +37,7 @@ Example:
 ```json
 {
   "layer_names": ["analyzer", "parser", "domain_values", "entities", "materials", "services", "tests", "utils"],
+  "exclude_modules": ["crate::tests::integration", "crate::utils::helpers"],
   "access_rules": [
     "NoLayerCyclicDependencies",
     "NoModuleCyclicDependencies",
@@ -65,11 +67,16 @@ Example:
 }
 ```
 
+> **Note:** The `exclude_modules` field is optional. It supports:
+> - Exact module names: `"crate::utils"` - excludes only that specific module
+> - Prefix matching: `"crate::utils::"` - excludes the module and all its submodules
+
 ### Using a rust test
 You can use the `Architecture` struct in order to define your architecture.
 Afterwards you check it for failures.
 ```rust
 let architecture = Architecture::new(hash_set!["analyzer".to_owned(), "parser".to_owned(), ...])
+.with_excluded_modules(hash_set!["crate::tests::integration".to_owned()])
 .with_access_rule(NoParentAccess)
 .with_access_rule(NoModuleCyclicDependencies)
 .with_access_rule(NoLayerCyclicDependencies)
@@ -83,6 +90,9 @@ let module_tree = ModuleTree::new("src/lib.rs");
 assert!(architecture.validate_access_rules().is_ok());
 assert!(architecture.check_access_rules(&module_tree).is_ok());
 ```
+
+> **Note:** Use `with_excluded_modules()` to skip specific modules from architecture checks.
+> Supports exact match (`"crate::utils"`) and prefix matching (`"crate::utils::"`).
 If you are interested in the failure you can pretty print it like this:
 ```rust
 architecture.check_access_rules(&module_tree).err().unwrap().print(module_tree.tree());
