@@ -16,7 +16,10 @@ pub fn parse_specification(specification_path: &Path) -> Result<Architecture, Fa
         serde_json::from_str(&read_file_content(specification_path)?)
             .map_err(|_| Failure::SpecificationCouldNotBeParsed)?;
 
-    let mut architecture = Architecture::new(hash_set![..specification.clone().layer_names]);
+    let layer_names = specification.layer_names.clone();
+    let excluded_modules: Vec<String> = specification.exclude_modules.unwrap_or_default();
+    let mut architecture = Architecture::new(hash_set![..layer_names])
+        .with_excluded_modules(hash_set![..excluded_modules]);
     for access_rule in specification.access_rules {
         match access_rule {
             AccessRule::NoLayerCyclicDependencies => {

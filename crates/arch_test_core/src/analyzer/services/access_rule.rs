@@ -23,32 +23,41 @@ fn is_root_crate_module(node: &ModuleNode) -> bool {
 }
 
 pub trait AccessRule: Debug {
-    fn check(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation>;
+    fn check(&self, module_tree: &ModuleTree, excluded_modules: &HashSet<String>) -> Result<(), RuleViolation>;
     fn validate(&self, layer_names: &HashSet<String>) -> bool;
 }
 
 impl AccessRule for MayOnlyAccess {
-    fn check(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation> {
-        for node in module_tree.tree().iter().filter(|node| {
+    fn check(&self, module_tree: &ModuleTree, excluded_modules: &HashSet<String>) -> Result<(), RuleViolation> {
+        let tree = module_tree.tree();
+        for node in tree.iter().filter(|node| {
+            let node_path = node.get_fully_qualified_path(tree);
+            if is_module_excluded(&node_path, excluded_modules) {
+                return false;
+            }
             node.module_name() == self.accessor()
                 || has_parent_matching_name(
                     &hash_set![self.accessor().clone()],
                     node.index(),
-                    module_tree.tree(),
+                    tree,
                 )
         }) {
             if let Some(use_relation) = node
-                .use_relations(module_tree.tree(), module_tree.possible_uses(), false)
+                .use_relations(tree, module_tree.possible_uses(), false)
                 .iter()
                 .find(|use_relation| {
+                    let used_node_path = tree[use_relation.used_object().node_index()].get_fully_qualified_path(tree);
+                    if is_module_excluded(&used_node_path, excluded_modules) {
+                        return false;
+                    }
                     !self.accessed().contains(
-                        module_tree.tree()[use_relation.used_object().node_index()].module_name(),
+                        tree[use_relation.used_object().node_index()].module_name(),
                     ) && !has_parent_matching_name(
                         self.accessed(),
                         use_relation.used_object().node_index(),
-                        module_tree.tree(),
+                        tree,
                     ) && (!self.when_same_parent()
-                        || module_tree.tree()[use_relation.used_object().node_index()]
+                        || tree[use_relation.used_object().node_index()]
                             .parent_index()
                             == node.parent_index())
                 })
@@ -73,27 +82,36 @@ impl AccessRule for MayOnlyAccess {
 }
 
 impl AccessRule for MayNotAccess {
-    fn check(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation> {
-        for node in module_tree.tree().iter().filter(|node| {
+    fn check(&self, module_tree: &ModuleTree, excluded_modules: &HashSet<String>) -> Result<(), RuleViolation> {
+        let tree = module_tree.tree();
+        for node in tree.iter().filter(|node| {
+            let node_path = node.get_fully_qualified_path(tree);
+            if is_module_excluded(&node_path, excluded_modules) {
+                return false;
+            }
             node.module_name() == self.accessor()
                 || has_parent_matching_name(
                     &hash_set![self.accessor().clone()],
                     node.index(),
-                    module_tree.tree(),
+                    tree,
                 )
         }) {
             if let Some(use_relation) = node
-                .use_relations(module_tree.tree(), module_tree.possible_uses(), false)
+                .use_relations(tree, module_tree.possible_uses(), false)
                 .iter()
                 .find(|use_relation| {
+                    let used_node_path = tree[use_relation.used_object().node_index()].get_fully_qualified_path(tree);
+                    if is_module_excluded(&used_node_path, excluded_modules) {
+                        return false;
+                    }
                     (self.accessed().contains(
-                        module_tree.tree()[use_relation.used_object().node_index()].module_name(),
+                        tree[use_relation.used_object().node_index()].module_name(),
                     ) || has_parent_matching_name(
                         self.accessed(),
                         use_relation.used_object().node_index(),
-                        module_tree.tree(),
+                        tree,
                     )) && (!self.when_same_parent()
-                        || module_tree.tree()[use_relation.used_object().node_index()]
+                        || tree[use_relation.used_object().node_index()]
                             .parent_index()
                             == node.parent_index())
                 })
@@ -118,27 +136,36 @@ impl AccessRule for MayNotAccess {
 }
 
 impl AccessRule for MayOnlyBeAccessedBy {
-    fn check(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation> {
-        for node in module_tree.tree().iter().filter(|node| {
+    fn check(&self, module_tree: &ModuleTree, excluded_modules: &HashSet<String>) -> Result<(), RuleViolation> {
+        let tree = module_tree.tree();
+        for node in tree.iter().filter(|node| {
+            let node_path = node.get_fully_qualified_path(tree);
+            if is_module_excluded(&node_path, excluded_modules) {
+                return false;
+            }
             // Skip the root crate module (lib.rs/main.rs) - it's not a layer
             !is_root_crate_module(node)
                 && !self.accessors().contains(node.module_name())
-                && !has_parent_matching_name(self.accessors(), node.index(), module_tree.tree())
+                && !has_parent_matching_name(self.accessors(), node.index(), tree)
         }) {
             if let Some(use_relation) = node
-                .use_relations(module_tree.tree(), module_tree.possible_uses(), false)
+                .use_relations(tree, module_tree.possible_uses(), false)
                 .iter()
                 .find(|use_relation| {
+                    let used_node_path = tree[use_relation.used_object().node_index()].get_fully_qualified_path(tree);
+                    if is_module_excluded(&used_node_path, excluded_modules) {
+                        return false;
+                    }
                     (self.accessed()
-                        == module_tree.tree()[use_relation.used_object().node_index()]
+                        == tree[use_relation.used_object().node_index()]
                             .module_name()
                         || has_parent_matching_name(
                             &hash_set![self.accessed().clone()],
                             use_relation.used_object().node_index(),
-                            module_tree.tree(),
+                            tree,
                         ))
                         && (!self.when_same_parent()
-                            || module_tree.tree()[use_relation.used_object().node_index()]
+                            || tree[use_relation.used_object().node_index()]
                                 .parent_index()
                                 == node.parent_index())
                 })
@@ -163,25 +190,34 @@ impl AccessRule for MayOnlyBeAccessedBy {
 }
 
 impl AccessRule for MayNotBeAccessedBy {
-    fn check(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation> {
-        for node in module_tree.tree().iter().filter(|node| {
+    fn check(&self, module_tree: &ModuleTree, excluded_modules: &HashSet<String>) -> Result<(), RuleViolation> {
+        let tree = module_tree.tree();
+        for node in tree.iter().filter(|node| {
+            let node_path = node.get_fully_qualified_path(tree);
+            if is_module_excluded(&node_path, excluded_modules) {
+                return false;
+            }
             self.accessors().contains(node.module_name())
-                || has_parent_matching_name(self.accessors(), node.index(), module_tree.tree())
+                || has_parent_matching_name(self.accessors(), node.index(), tree)
         }) {
             if let Some(use_relation) = node
-                .use_relations(module_tree.tree(), module_tree.possible_uses(), false)
+                .use_relations(tree, module_tree.possible_uses(), false)
                 .iter()
                 .find(|use_relation| {
+                    let used_node_path = tree[use_relation.used_object().node_index()].get_fully_qualified_path(tree);
+                    if is_module_excluded(&used_node_path, excluded_modules) {
+                        return false;
+                    }
                     (self.accessed()
-                        == module_tree.tree()[use_relation.used_object().node_index()]
+                        == tree[use_relation.used_object().node_index()]
                             .module_name()
                         || has_parent_matching_name(
                             &hash_set![self.accessed().clone()],
                             use_relation.used_object().node_index(),
-                            module_tree.tree(),
+                            tree,
                         ))
                         && (!self.when_same_parent()
-                            || module_tree.tree()[use_relation.used_object().node_index()]
+                            || tree[use_relation.used_object().node_index()]
                                 .parent_index()
                                 == node.parent_index())
                 })
@@ -206,16 +242,23 @@ impl AccessRule for MayNotBeAccessedBy {
 }
 
 impl AccessRule for NoParentAccess {
-    fn check(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation> {
-        for node in module_tree
-            .tree()
-            .iter()
-            .filter(|node| node.parent_index().is_some())
-        {
+    fn check(&self, module_tree: &ModuleTree, excluded_modules: &HashSet<String>) -> Result<(), RuleViolation> {
+        let tree = module_tree.tree();
+        for node in tree.iter().filter(|node| {
+            let node_path = node.get_fully_qualified_path(tree);
+            if is_module_excluded(&node_path, excluded_modules) {
+                return false;
+            }
+            node.parent_index().is_some()
+        }) {
             if let Some(use_relation) = node
-                .use_relations(module_tree.tree(), module_tree.possible_uses(), false)
+                .use_relations(tree, module_tree.possible_uses(), false)
                 .iter()
                 .find(|use_relation| {
+                    let used_node_path = tree[use_relation.used_object().node_index()].get_fully_qualified_path(tree);
+                    if is_module_excluded(&used_node_path, excluded_modules) {
+                        return false;
+                    }
                     node.parent_index().is_some()
                         && node.parent_index().unwrap() == use_relation.used_object().node_index()
                 })
@@ -236,13 +279,26 @@ impl AccessRule for NoParentAccess {
 }
 
 impl AccessRule for NoModuleCyclicDependencies {
-    fn check(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation> {
+    fn check(&self, module_tree: &ModuleTree, excluded_modules: &HashSet<String>) -> Result<(), RuleViolation> {
+        let tree = module_tree.tree();
         if let Some(involved) = contains_cyclic_dependency(module_tree) {
-            return Err(RuleViolation::new(
-                RuleViolationType::Cycle,
-                Box::new(self.clone()),
-                involved,
-            ));
+            // Filter out any violations involving excluded modules
+            let filtered_involved: Vec<_> = involved.into_iter()
+                .filter(|rel| {
+                    let using_path = tree[rel.using_object().node_index()].get_fully_qualified_path(tree);
+                    let used_path = tree[rel.used_object().node_index()].get_fully_qualified_path(tree);
+                    !is_module_excluded(&using_path, excluded_modules) &&
+                    !is_module_excluded(&used_path, excluded_modules)
+                })
+                .collect();
+            
+            if !filtered_involved.is_empty() {
+                return Err(RuleViolation::new(
+                    RuleViolationType::Cycle,
+                    Box::new(self.clone()),
+                    filtered_involved,
+                ));
+            }
         }
         Ok(())
     }
@@ -253,13 +309,26 @@ impl AccessRule for NoModuleCyclicDependencies {
 }
 
 impl AccessRule for NoLayerCyclicDependencies {
-    fn check(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation> {
+    fn check(&self, module_tree: &ModuleTree, excluded_modules: &HashSet<String>) -> Result<(), RuleViolation> {
+        let tree = module_tree.tree();
         if let Some(involved) = contains_cyclic_dependency_on_any_level(module_tree) {
-            return Err(RuleViolation::new(
-                RuleViolationType::Cycle,
-                Box::new(self.clone()),
-                involved,
-            ));
+            // Filter out any violations involving excluded modules
+            let filtered_involved: Vec<_> = involved.into_iter()
+                .filter(|rel| {
+                    let using_path = tree[rel.using_object().node_index()].get_fully_qualified_path(tree);
+                    let used_path = tree[rel.used_object().node_index()].get_fully_qualified_path(tree);
+                    !is_module_excluded(&using_path, excluded_modules) &&
+                    !is_module_excluded(&used_path, excluded_modules)
+                })
+                .collect();
+            
+            if !filtered_involved.is_empty() {
+                return Err(RuleViolation::new(
+                    RuleViolationType::Cycle,
+                    Box::new(self.clone()),
+                    filtered_involved,
+                ));
+            }
         }
         Ok(())
     }
@@ -279,6 +348,22 @@ fn has_parent_matching_name(
             return true;
         }
         node_index = parent_index;
+    }
+    false
+}
+
+/// Check if a module is excluded from architecture checks.
+/// Supports exact match and prefix matching (if exclusion ends with "::").
+fn is_module_excluded(fully_qualified_path: &str, excluded_modules: &HashSet<String>) -> bool {
+    // Check exact match
+    if excluded_modules.contains(fully_qualified_path) {
+        return true;
+    }
+    // Check prefix match (for exclusions ending with "::")
+    for excl in excluded_modules {
+        if excl.ends_with("::") && fully_qualified_path.starts_with(excl) {
+            return true;
+        }
     }
     false
 }

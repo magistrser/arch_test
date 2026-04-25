@@ -21,7 +21,7 @@ name = "cargo-archtest"
 path = "src/main.rs"
 
 [dependencies]
-arch_validation_core = "0.1.8"
+arch_validation_core = { path = "../arch_test_core" }
 structopt = "0.3.26"
 serde = "1.0"
 serde_derive = "1.0"

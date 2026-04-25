@@ -24,6 +24,7 @@ use crate::parser::materials::ModuleTree;
 #[derive(Debug)]
 pub struct Architecture<'r> {
     layer_names: HashSet<String>,
+    excluded_modules: HashSet<String>,
     access_rules: Vec<Box<dyn AccessRule + 'r>>,
 }
 
@@ -31,8 +32,14 @@ impl<'r> Architecture<'r> {
     pub fn new(layer_names: HashSet<String>) -> Self {
         Architecture {
             layer_names,
+            excluded_modules: HashSet::default(),
             access_rules: Vec::default(),
         }
+    }
+
+    pub fn with_excluded_modules(mut self, excluded_modules: HashSet<String>) -> Self {
+        self.excluded_modules = excluded_modules;
+        self
     }
 
     pub fn with_access_rule(mut self, access_rule: impl AccessRule + 'r) -> Self {
@@ -55,7 +62,7 @@ impl<'r> Architecture<'r> {
 
     pub fn check_access_rules(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation> {
         for access_rule in self.access_rules.iter() {
-            access_rule.check(module_tree)?;
+            access_rule.check(module_tree, &self.excluded_modules)?;
         }
         Ok(())
     }
@@ -66,6 +73,11 @@ impl<'r> Architecture<'r> {
     ) -> Result<(), RuleViolation> {
         let tree: &Vec<ModuleNode> = module_tree.tree();
         if tree.iter().any(|node| {
+            let node_path = node.get_fully_qualified_path(tree);
+            // Skip excluded modules
+            if self.is_module_excluded(&node_path) {
+                return false;
+            }
             node.parent_index().is_some()
                 && !self.layer_names.contains(node.module_name())
                 && !self
@@ -79,5 +91,21 @@ impl<'r> Architecture<'r> {
             ));
         }
         Ok(())
+    }
+
+    /// Check if a module is excluded from architecture checks.
+    /// Supports exact match and prefix matching (if exclusion ends with "::").
+    pub fn is_module_excluded(&self, fully_qualified_path: &str) -> bool {
+        // Check exact match
+        if self.excluded_modules.contains(fully_qualified_path) {
+            return true;
+        }
+        // Check prefix match (for exclusions ending with "::")
+        for excl in &self.excluded_modules {
+            if excl.ends_with("::") && fully_qualified_path.starts_with(excl) {
+                return true;
+            }
+        }
+        false
     }
 }
