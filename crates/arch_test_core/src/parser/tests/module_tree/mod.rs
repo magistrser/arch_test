@@ -111,7 +111,15 @@ fn non_main_or_lib_root() {
 #[test]
 fn path_wildcard_unknown() {
     let module_tree = ModuleTree::new("src/parser/tests/module_tree/path_wildcard_unknown.rs");
-    assert!(module_tree.tree()[0].usable_objects.is_empty());
+    assert_eq!(module_tree.tree()[0].usable_objects.len(), 1);
+    assert_eq!(
+        module_tree.tree()[0].usable_objects[0].object_name,
+        "a::b::c".to_owned()
+    );
+    assert_eq!(
+        module_tree.tree()[0].usable_objects[0].object_type(),
+        ObjectType::Use
+    );
 }
 
 #[test]
@@ -119,14 +127,20 @@ fn filter_unused_uses() {
     let module_tree = ModuleTree::new("src/parser/tests/module_tree/filter_unused_uses/main.rs");
 
     let tree = module_tree.tree();
-    assert_eq!(tree[0].usable_objects.len(), 3);
-    assert_eq!(
-        tree[0].usable_objects[0].object_name,
-        "crate::file_1::Test1".to_owned()
+    assert_eq!(tree[0].usable_objects.len(), 4);
+    assert!(
+        tree[0]
+            .usable_objects
+            .iter()
+            .any(|obj| obj.object_name == "a::b::c"),
+        "Expected unused import to be preserved as dependency"
     );
-    assert_eq!(tree[0].usable_objects[1].object_name, "main".to_owned());
-    assert_eq!(
-        tree[0].usable_objects[2].object_name,
-        "crate::file_1::Test1".to_owned()
-    );
+    assert!(tree[0]
+        .usable_objects
+        .iter()
+        .any(|obj| obj.object_name == "crate::file_1::Test1"),);
+    assert!(tree[0]
+        .usable_objects
+        .iter()
+        .any(|obj| obj.object_name == "main"),);
 }

@@ -563,7 +563,9 @@ fn parse_file_rec(
         | SyntaxKind::LITERAL
         | SyntaxKind::EXTERN_CRATE
         | SyntaxKind::CONTINUE_EXPR
-        | SyntaxKind::BREAK_EXPR => {
+        | SyntaxKind::BREAK_EXPR
+        | SyntaxKind::LIFETIME_PARAM
+        | SyntaxKind::ERROR => {
             return None;
         }
         SyntaxKind::NAME_REF
@@ -607,6 +609,7 @@ fn parse_file_rec(
         | SyntaxKind::TYPE_PARAM
         | SyntaxKind::CONST_PARAM
         | SyntaxKind::TYPE_BOUND_LIST
+        | SyntaxKind::FOR_TYPE
         | SyntaxKind::TYPE_BOUND => {
             for child in syntax_node.children() {
                 parse_file_rec(&child, module_references, usable_objects, current_index);
@@ -775,7 +778,8 @@ fn parse_nested_tuple_type(syntax_node: &SyntaxNode) -> Vec<(String, TextRange)>
         | SyntaxKind::LITERAL_PAT
         | SyntaxKind::MACRO_PAT
         | SyntaxKind::FN_PTR_TYPE // TODO: Handle it in FN Parse function?
-        | SyntaxKind::FOR_TYPE // TODO: WTH is that?
+        | SyntaxKind::GENERIC_PARAM_LIST
+        | SyntaxKind::LIFETIME_PARAM
         | SyntaxKind::WILDCARD_PAT
         | SyntaxKind::LIFETIME
         | SyntaxKind::VISIBILITY
@@ -795,6 +799,7 @@ fn parse_nested_tuple_type(syntax_node: &SyntaxNode) -> Vec<(String, TextRange)>
         | SyntaxKind::ARRAY_TYPE
         | SyntaxKind::TYPE_BOUND_LIST
         | SyntaxKind::DYN_TRAIT_TYPE
+        | SyntaxKind::FOR_TYPE
         | SyntaxKind::TYPE_BOUND => {
             for child in syntax_node.children() {
                 result.append(&mut parse_nested_tuple_type(&child));
@@ -804,8 +809,8 @@ fn parse_nested_tuple_type(syntax_node: &SyntaxNode) -> Vec<(String, TextRange)>
             result.append(&mut parse_path_type(syntax_node));
         }
         _ => {
-            println!("{:?} => {}", syntax_node, syntax_node);
-            unreachable!()
+            println!("UNHANDLED NESTED TYPE: {:?} => {}", syntax_node, syntax_node);
+            return result;
         }
     }
     result

@@ -296,30 +296,9 @@ impl ModuleTree {
     }
 
     fn filter_unused_uses(&mut self) {
-        for node in self.tree.iter_mut() {
-            for i in (0..node.usable_objects.len()).rev() {
-                if node.usable_objects[i].object_type() != ObjectType::Use
-                    && node.usable_objects[i].object_type() != ObjectType::RePublish
-                {
-                    continue;
-                }
-                // Internal crate imports (crate::...) are always real dependencies —
-                // Rust won't compile unused imports without #[allow(unused_imports)].
-                // Filtering them based on ImplicitUse tracking causes false negatives
-                // when types are used in positions the parser doesn't track (e.g. method bodies).
-                if node.usable_objects[i].object_name.starts_with("crate::") {
-                    continue;
-                }
-                if !node.usable_objects.iter().any(|obj| {
-                    obj.object_type() == ObjectType::ImplicitUse
-                        && obj
-                            .object_name
-                            .starts_with(&node.usable_objects[i].object_name)
-                }) {
-                    node.usable_objects.remove(i);
-                }
-            }
-        }
+        // Intentional no-op:
+        // for architecture checks we treat every `use` / `pub use` import as a real dependency,
+        // even if there is no tracked ImplicitUse for it.
     }
 
     pub fn tree(&self) -> &Vec<ModuleNode> {
