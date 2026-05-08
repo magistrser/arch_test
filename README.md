@@ -15,7 +15,7 @@ It applies static analyses on the specified rust project to extract use relation
 ## Features
 * Detect cyclic dependencies level wise or module wise
 * Prohibit parent access
-* Define layer relationships like `MayNotAccess`, `MayOnlyAccess`, `MyNotBeAccessedBy`, `MayOnlyBeAccessedBy`
+* Define layer relationships like `MayNotAccess`, `MayOnlyAccess`, `MayNotBeAccessedBy`, `MayOnlyBeAccessedBy`
 * Exclude specific modules from architecture checks (supports exact match and prefix matching)
 * And more, please consult the documentation.
 
@@ -106,10 +106,7 @@ arch_test:
   name: ArchTest
   runs-on: ubuntu-latest
   steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/install@v0.1
-      with:
-        crate: cargo-archtest-cli
-        version: latest
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - run: cargo install cargo-archtest-cli --locked
     - run: cargo archtest
-```
