@@ -84,6 +84,14 @@ jobs:
         with:
           tool: cargo-edit
 
+      - name: Read current versions before bump
+        id: versions
+        run: |
+          CORE_VERSION=$(grep '^version' crates/arch_test_core/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          CLI_VERSION=$(grep '^version' crates/cargo-archtest/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "core_version=$CORE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "cli_version=$CLI_VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Bump patch version in arch_validation_core
         run: cargo set-version --bump patch --manifest-path crates/arch_test_core/Cargo.toml
 
@@ -93,8 +101,16 @@ jobs:
           VERSION=$(grep '^version' crates/arch_test_core/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Bump patch version in cargo-archtest-cli
-        run: cargo set-version --bump patch --manifest-path crates/cargo-archtest/Cargo.toml
+      - name: Calculate and set new CLI version manually
+        run: |
+          CLI_VERSION="${{ steps.versions.outputs.cli_version }}"
+          MAJOR=$(echo "$CLI_VERSION" | cut -d. -f1)
+          MINOR=$(echo "$CLI_VERSION" | cut -d. -f2)
+          PATCH=$(echo "$CLI_VERSION" | cut -d. -f3)
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          sed -i "s/^version = \"$CLI_VERSION\"/version = \"$NEW_VERSION\"/" crates/cargo-archtest/Cargo.toml
+          echo "new_cli_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Update arch_validation_core dependency version in CLI
         run: |
