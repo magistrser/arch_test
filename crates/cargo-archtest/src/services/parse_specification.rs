@@ -3,7 +3,7 @@ use std::io::Read;
 use std::path::Path;
 
 use arch_validation_core::access_rules::{
-    MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
+    Available, MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
     NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess,
 };
 use arch_validation_core::hash_set;
@@ -72,6 +72,17 @@ pub fn parse_specification(specification_path: &Path) -> Result<Architecture<'_>
                 architecture = architecture.with_access_rule(MayNotBeAccessedBy::new(
                     accessed,
                     hash_set![..accessors],
+                    when_same_parent,
+                ))
+            }
+            AccessRule::Available {
+                layer_names,
+                allowed_crates,
+                when_same_parent,
+            } => {
+                architecture = architecture.with_access_rule(Available::new(
+                    hash_set![..layer_names],
+                    hash_set![..allowed_crates],
                     when_same_parent,
                 ))
             }

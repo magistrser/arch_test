@@ -1,0 +1,37 @@
+use std::collections::HashSet;
+
+/// # Available - white_list for libraries
+/// This access rule restricts the use of external crates (including standard library)
+/// to specific layers. Only the crates listed in `allowed_crates` can be used in modules
+/// belonging to the specified `layer_names`.
+/// 
+/// If `when_same_parent` is `true`, the rule is only applied within modules that share
+/// the same parent as the target layers.
+#[derive(Debug, Clone)]
+pub struct Available {
+    layer_names: HashSet<String>,
+    allowed_crates: HashSet<String>,
+    when_same_parent: bool,
+}
+
+impl Available {
+    pub fn new(layer_names: HashSet<String>, allowed_crates: HashSet<String>, when_same_parent: bool) -> Self {
+        Available {
+            layer_names,
+            allowed_crates,
+            when_same_parent,
+        }
+    }
+
+    pub fn layer_names(&self) -> &HashSet<String> {
+        &self.layer_names
+    }
+
+    pub fn allowed_crates(&self) -> &HashSet<String> {
+        &self.allowed_crates
+    }
+
+    pub fn when_same_parent(&self) -> bool {
+        self.when_same_parent
+    }
+}

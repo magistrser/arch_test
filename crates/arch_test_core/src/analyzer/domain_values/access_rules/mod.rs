@@ -1,3 +1,4 @@
+pub use self::available::Available;
 pub use self::may_not_access::MayNotAccess;
 pub use self::may_not_be_accessed_by::MayNotBeAccessedBy;
 pub use self::may_only_access::MayOnlyAccess;
@@ -6,6 +7,7 @@ pub use self::no_layer_cyclic_dependencies::NoLayerCyclicDependencies;
 pub use self::no_module_cyclic_dependencies::NoModuleCyclicDependencies;
 pub use self::no_parent_access::NoParentAccess;
 
+mod available;
 mod may_not_access;
 mod may_not_be_accessed_by;
 mod may_only_access;

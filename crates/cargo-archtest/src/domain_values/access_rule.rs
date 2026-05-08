@@ -23,4 +23,10 @@ pub enum AccessRule {
         accessed: String,
         when_same_parent: bool,
     },
+    Available {
+        layer_names: Vec<String>,
+        allowed_crates: Vec<String>,
+        #[serde(default)]
+        when_same_parent: bool,
+    },
 }

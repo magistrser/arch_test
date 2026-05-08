@@ -57,6 +57,13 @@
         "accessed": "materials",
         "when_same_parent": true
       }
+    },
+    {
+      "Available": {
+        "layer_names": ["parser"],
+        "allowed_crates": ["std", "serde"],
+        "when_same_parent": false
+      }
     }
   ]
 }
