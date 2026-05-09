@@ -1,3 +1,6 @@
+#[cfg(test)]
+use std::collections::HashSet;
+
 use rstest::rstest;
 use velcro::hash_set;
 
@@ -602,4 +605,44 @@ fn test_checks_available_libs(#[case] crate_name: &str, #[case] module_path: &st
     let module_tree = ModuleTree::new(module_path);
 
     assert!(architecture.check_access_rules(&module_tree).is_ok());
+}
+
+#[test]
+fn available_white_list_comprehensive_positive() {
+    // Test: All external imports in white_list - should pass
+    // Local modules (crate::, my_module, self::, super::) should be allowed by default
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
+            hash_set!["file_1".to_owned()],
+            hash_set!["std".to_owned(), "serde_json".to_owned()], // Only external crates
+            false,
+        ));
+    let module_tree = ModuleTree::new(
+        "src/analyzer/tests/access_rules/available_white_list_comprehensive/main.rs",
+    );
+    dbg!(&module_tree);
+    assert!(architecture.check_access_rules(&module_tree).is_ok());
+}
+
+#[rstest]
+#[case(hash_set!["std".to_owned()])]
+#[case(hash_set!["serde_json".to_owned()])]
+#[case(hash_set![])]
+fn available_white_list_comprehensive_missing_external_crate(#[case] white_list: HashSet<String>) {
+    // Test: Missing external crate (serde_json) - should fail
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
+            hash_set!["file_1".to_owned()],
+            white_list, // Missing serde_json
+            false,
+        ));
+    let module_tree = ModuleTree::new(
+        "src/analyzer/tests/access_rules/available_white_list_comprehensive/main.rs",
+    );
+    assert!(architecture.check_access_rules(&module_tree).is_err());
+    architecture
+        .check_access_rules(&module_tree)
+        .err()
+        .unwrap()
+        .print(module_tree.tree());
 }
