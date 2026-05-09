@@ -106,6 +106,10 @@ struct ExampleStruct {
 
 impl ExampleStruct {
     fn new() -> Self {
+        Self::default()
+    }
+
+    fn default() -> Self {
         ExampleStruct {
             json_field: Value::Null,
             std_map: StdHashMap::new(),

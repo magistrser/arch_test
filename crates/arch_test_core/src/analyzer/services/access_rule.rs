@@ -520,6 +520,7 @@ impl Available {
                 // Skip local paths
                 if object_name.starts_with("crate::")
                     || object_name.starts_with("self::")
+                    || object_name.starts_with("Self::")
                     || object_name.starts_with("super::")
                     || object_name.starts_with("{{root}}")
                 {
@@ -550,7 +551,7 @@ impl Available {
     }
 
     fn is_local_module(&self, crate_name: &str) -> bool {
-        crate_name == "crate" || crate_name == "self" || crate_name == "super"
+        crate_name == "crate" || crate_name == "self" || crate_name == "Self" || crate_name == "super"
     }
 }
 
