@@ -16,6 +16,7 @@ It applies static analyses on the specified rust project to extract use relation
 * Detect cyclic dependencies level wise or module wise
 * Prohibit parent access
 * Define layer relationships like `MayNotAccess`, `MayOnlyAccess`, `MayNotBeAccessedBy`, `MayOnlyBeAccessedBy`
+* Restrict external crate usage with `Available` rule (white_list) — specify which external crates (including std) each layer is allowed to use
 * Exclude specific modules from architecture checks (supports exact match and prefix matching)
 * And more, please consult the documentation.
 
@@ -50,17 +51,31 @@ Example:
       }
     },
     {
+      "MayOnlyAccess": {
+        "accessor": "analyzer",
+        "accessed": ["analyzer", "parser"],
+        "when_same_parent": true
+      }
+    },
+    {
       "MayOnlyBeAccessedBy": {
-        "accessors": ["services", "tests"],
-        "accessed": "materials",
+        "accessors": ["materials", "tests"],
+        "accessed": "services",
         "when_same_parent": false
       }
     },
     {
       "MayNotBeAccessedBy": {
-        "accessors": ["materials", "domain_values", "entities", "utils"],
-        "accessed": "services",
+        "accessors": ["services", "domain_values", "entities", "utils"],
+        "accessed": "materials",
         "when_same_parent": true
+      }
+    },
+    {
+      "Available": {
+        "layer_names": ["parser"],
+        "allowed_crates": ["std", "serde"],
+        "when_same_parent": false
       }
     }
   ]
@@ -85,6 +100,11 @@ let architecture = Architecture::new(hash_set!["analyzer".to_owned(), "parser".t
     "materials".to_owned(),
     hash_set!["tests".to_owned()],
     true,
+))
+.with_access_rule(Available::new(
+    hash_set!["parser".to_owned()],
+    hash_set!["std".to_owned(), "serde".to_owned()],
+    false,
 ));
 let module_tree = ModuleTree::new("src/lib.rs");
 assert!(architecture.validate_access_rules().is_ok());
