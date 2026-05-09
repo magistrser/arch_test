@@ -1,8 +1,7 @@
 #[cfg(test)]
-mod subdomain;
-
-#[cfg(test)]
 use std::collections::HashSet;
+#[cfg(test)]
+mod subdomain;
 
 use rstest::rstest;
 use velcro::hash_set;
@@ -582,6 +581,10 @@ fn exclude_modules_complete_layer_specification() {
         .is_ok());
 }
 
+const INVALID_ACCESS_PATTERN: (&str, &[&str]) = ("file_1", &["std"]);
+const DEEP_NESTING_VALID_PATTERN: (&str, &[&str]) = ("domain", &["std", "serde"]);
+const DEEP_NESTING_INVALID_PATTERN: (&str, &[&str]) = ("domain", &["std"]);
+
 #[rstest]
 #[case(
     "std",
@@ -668,60 +671,57 @@ fn available_white_list_comprehensive_missing_external_crate(#[case] white_list:
         .print(module_tree.tree());
 }
 
-#[test]
-fn available_deep_nesting_detects_violation() {
+#[rstest]
+#[case(DEEP_NESTING_INVALID_PATTERN.0, DEEP_NESTING_INVALID_PATTERN.1, false)]
+#[case(DEEP_NESTING_VALID_PATTERN.0, DEEP_NESTING_VALID_PATTERN.1, true)]
+fn available_deep_nesting(
+    #[case] layer: &str,
+    #[case] white_list: &[&str],
+    #[case] expect_ok: bool,
+) {
     let architecture =
-        Architecture::new(hash_set!["domain".to_owned()]).with_access_rule(Available::new(
-            hash_set!["domain".to_owned()],
-            hash_set!["std".to_owned()],
+        Architecture::new(hash_set![layer.to_owned()]).with_access_rule(Available::new(
+            hash_set![layer.to_owned()],
+            white_list.iter().map(|s| (*s).to_owned()).collect(),
             RuleScope::Global,
         ));
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/available_deep_nesting/main.rs");
-    assert!(architecture.check_access_rules(&module_tree).is_err());
-    architecture
-        .check_access_rules(&module_tree)
-        .err()
-        .unwrap()
-        .print(module_tree.tree());
+    if expect_ok {
+        assert!(architecture.check_access_rules(&module_tree).is_ok());
+    } else {
+        assert!(architecture.check_access_rules(&module_tree).is_err());
+        architecture
+            .check_access_rules(&module_tree)
+            .err()
+            .unwrap()
+            .print(module_tree.tree());
+    }
 }
 
-#[test]
-fn available_deep_nesting_allows_std_and_serde() {
+#[rstest]
+#[case(
+    "src/analyzer/tests/access_rules/available_local_module_reference/main.rs",
+    INVALID_ACCESS_PATTERN.0,
+    INVALID_ACCESS_PATTERN.1,
+)]
+#[case(
+    "src/analyzer/tests/access_rules/available_self_method_call/main.rs",
+    INVALID_ACCESS_PATTERN.0,
+    INVALID_ACCESS_PATTERN.1,
+)]
+fn available_does_not_flag_local_references(
+    #[case] module_path: &str,
+    #[case] layer: &str,
+    #[case] white_list: &[&str],
+) {
     let architecture =
-        Architecture::new(hash_set!["domain".to_owned()]).with_access_rule(Available::new(
-            hash_set!["domain".to_owned()],
-            hash_set!["std".to_owned(), "serde".to_owned()],
+        Architecture::new(hash_set![layer.to_owned()]).with_access_rule(Available::new(
+            hash_set![layer.to_owned()],
+            white_list.iter().map(|s| (*s).to_owned()).collect(),
             RuleScope::Global,
         ));
-    let module_tree =
-        ModuleTree::new("src/analyzer/tests/access_rules/available_deep_nesting/main.rs");
-    assert!(architecture.check_access_rules(&module_tree).is_ok());
-}
-
-#[test]
-fn available_does_not_flag_local_module_references() {
-    let architecture =
-        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
-            hash_set!["file_1".to_owned()],
-            hash_set!["std".to_owned()], // vehicle_payload NOT in whitelist
-            RuleScope::Global,
-        ));
-    let module_tree =
-        ModuleTree::new("src/analyzer/tests/access_rules/available_local_module_reference/main.rs");
-    assert!(architecture.check_access_rules(&module_tree).is_ok());
-}
-
-#[test]
-fn available_does_not_flag_self_method_calls() {
-    let architecture =
-        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
-            hash_set!["file_1".to_owned()],
-            hash_set!["std".to_owned()],
-            RuleScope::Global,
-        ));
-    let module_tree =
-        ModuleTree::new("src/analyzer/tests/access_rules/available_self_method_call/main.rs");
+    let module_tree = ModuleTree::new(module_path);
     assert!(architecture.check_access_rules(&module_tree).is_ok());
 }
 
