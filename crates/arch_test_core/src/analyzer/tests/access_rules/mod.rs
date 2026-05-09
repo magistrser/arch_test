@@ -6,7 +6,7 @@ use velcro::hash_set;
 
 use crate::analyzer::domain_values::access_rules::{
     Available, MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
-    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess,
+    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, RuleScope,
 };
 use crate::{Architecture, ModuleTree};
 
@@ -16,7 +16,7 @@ fn layer_dependency_direction_violation() {
         .with_access_rule(MayNotAccess::new(
             "application".to_owned(),
             hash_set!["infra".to_owned()],
-            false,
+            RuleScope::Global,
         ));
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/layer_dependency_direction/main.rs");
@@ -98,7 +98,7 @@ fn cyclic_dependency_over_several_layers() {
 fn may_only_access_positive() {
     let architecture =
         Architecture::new(hash_set!["file_1".to_owned(), "file_2".to_owned()]).with_access_rule(
-            MayOnlyAccess::new("file_1".to_owned(), hash_set!["file_2".to_owned()], false),
+            MayOnlyAccess::new("file_1".to_owned(), hash_set!["file_2".to_owned()], RuleScope::Global),
         );
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/may_access/main.rs");
     assert!(architecture.check_access_rules(&module_tree).is_ok());
@@ -107,7 +107,7 @@ fn may_only_access_positive() {
 #[test]
 fn may_only_access_negative() {
     let architecture = Architecture::new(hash_set!["file_1".to_owned(), "file_2".to_owned()])
-        .with_access_rule(MayOnlyAccess::new("file_1".to_owned(), hash_set![], false));
+        .with_access_rule(MayOnlyAccess::new("file_1".to_owned(), hash_set![], RuleScope::Global));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/may_access/main.rs");
     assert!(architecture.check_access_rules(&module_tree).is_err());
     architecture
@@ -120,7 +120,7 @@ fn may_only_access_negative() {
 #[test]
 fn may_only_access_when_same_parent_positive() {
     let architecture = Architecture::new(hash_set!["layer_1".to_owned(), "layer_2".to_owned()])
-        .with_access_rule(MayOnlyAccess::new("file_1".to_owned(), hash_set![], true));
+        .with_access_rule(MayOnlyAccess::new("file_1".to_owned(), hash_set![], RuleScope::Parent));
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/may_access_same_parent/main.rs");
     assert!(architecture.check_access_rules(&module_tree).is_ok());
@@ -129,7 +129,7 @@ fn may_only_access_when_same_parent_positive() {
 #[test]
 fn may_only_access_when_same_parent_negative() {
     let architecture = Architecture::new(hash_set!["layer_1".to_owned(), "layer_2".to_owned()])
-        .with_access_rule(MayOnlyAccess::new("file_1".to_owned(), hash_set![], false));
+        .with_access_rule(MayOnlyAccess::new("file_1".to_owned(), hash_set![], RuleScope::Global));
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/may_access_same_parent/main.rs");
     assert!(architecture.check_access_rules(&module_tree).is_err());
@@ -144,7 +144,7 @@ fn may_only_access_when_same_parent_negative() {
 fn may_not_access() {
     let architecture =
         Architecture::new(hash_set!["file_1".to_owned(), "file_2".to_owned()]).with_access_rule(
-            MayNotAccess::new("file_1".to_owned(), hash_set!["file_2".to_owned()], false),
+            MayNotAccess::new("file_1".to_owned(), hash_set!["file_2".to_owned()], RuleScope::Global),
         );
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/may_access/main.rs");
     assert!(architecture.check_access_rules(&module_tree).is_err());
@@ -159,7 +159,7 @@ fn may_not_access() {
 fn may_not_access_when_same_parent_positive() {
     let architecture =
         Architecture::new(hash_set!["layer_1".to_owned(), "layer_2".to_owned()]).with_access_rule(
-            MayNotAccess::new("file_1".to_owned(), hash_set!["file_2".to_owned()], true),
+            MayNotAccess::new("file_1".to_owned(), hash_set!["file_2".to_owned()], RuleScope::Parent),
         );
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/may_access_same_parent/main.rs");
@@ -170,7 +170,7 @@ fn may_not_access_when_same_parent_positive() {
 fn may_not_access_when_same_parent_negative() {
     let architecture =
         Architecture::new(hash_set!["layer_1".to_owned(), "layer_2".to_owned()]).with_access_rule(
-            MayNotAccess::new("file_1".to_owned(), hash_set!["file_2".to_owned()], false),
+            MayNotAccess::new("file_1".to_owned(), hash_set!["file_2".to_owned()], RuleScope::Global),
         );
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/may_access_same_parent/main.rs");
@@ -192,7 +192,7 @@ fn may_only_be_accessed_by() {
     .with_access_rule(MayOnlyBeAccessedBy::new(
         "file_2".to_owned(),
         hash_set!["file_1".to_owned()],
-        false,
+        RuleScope::Global,
     ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/may_access/main.rs");
     assert!(architecture.check_access_rules(&module_tree).is_err());
@@ -207,7 +207,7 @@ fn may_only_be_accessed_by() {
 fn may_only_be_accessed_by_when_same_parent_positive() {
     let architecture =
         Architecture::new(hash_set!["layer_1".to_owned(), "layer_2".to_owned()]).with_access_rule(
-            MayOnlyBeAccessedBy::new("file_2".to_owned(), hash_set![], true),
+            MayOnlyBeAccessedBy::new("file_2".to_owned(), hash_set![], RuleScope::Parent),
         );
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/may_access_same_parent/main.rs");
@@ -218,7 +218,7 @@ fn may_only_be_accessed_by_when_same_parent_positive() {
 fn may_only_be_accessed_by_when_same_parent_negative() {
     let architecture =
         Architecture::new(hash_set!["layer_1".to_owned(), "layer_2".to_owned()]).with_access_rule(
-            MayOnlyBeAccessedBy::new("file_2".to_owned(), hash_set![], false),
+            MayOnlyBeAccessedBy::new("file_2".to_owned(), hash_set![], RuleScope::Global),
         );
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/may_access_same_parent/main.rs");
@@ -240,7 +240,7 @@ fn may_not_be_accessed_by() {
     .with_access_rule(MayNotBeAccessedBy::new(
         "file_2".to_owned(),
         hash_set!["file_3".to_owned()],
-        false,
+        RuleScope::Global,
     ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/may_access/main.rs");
     assert!(architecture.check_access_rules(&module_tree).is_err());
@@ -255,7 +255,7 @@ fn may_not_be_accessed_by() {
 fn may_not_be_accessed_by_when_same_parent_positive() {
     let architecture =
         Architecture::new(hash_set!["layer_1".to_owned(), "layer_2".to_owned()]).with_access_rule(
-            MayOnlyBeAccessedBy::new("file_2".to_owned(), hash_set!["file_1".to_owned()], true),
+            MayOnlyBeAccessedBy::new("file_2".to_owned(), hash_set!["file_1".to_owned()], RuleScope::Parent),
         );
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/may_access_same_parent/main.rs");
@@ -266,7 +266,7 @@ fn may_not_be_accessed_by_when_same_parent_positive() {
 fn may_not_be_accessed_by_when_same_parent_negative() {
     let architecture =
         Architecture::new(hash_set!["layer_1".to_owned(), "layer_2".to_owned()]).with_access_rule(
-            MayNotBeAccessedBy::new("file_2".to_owned(), hash_set!["file_1".to_owned()], false),
+            MayNotBeAccessedBy::new("file_2".to_owned(), hash_set!["file_1".to_owned()], RuleScope::Global),
         );
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/may_access_same_parent/main.rs");
@@ -296,37 +296,37 @@ fn myself() {
     .with_access_rule(MayNotAccess::new(
         "parser".to_owned(),
         hash_set!["analyzer".to_owned()],
-        true,
+        RuleScope::Parent,
     ))
     .with_access_rule(MayOnlyAccess::new(
         "analyzer".to_owned(),
         hash_set!["analyzer".to_owned(), "parser".to_owned()],
-        true,
+        RuleScope::Parent,
     ))
     .with_access_rule(MayOnlyAccess::new(
         "domain_values".to_owned(),
         hash_set!["domain_values".to_owned(), "utils".to_owned()],
-        false,
+        RuleScope::Global,
     ))
     .with_access_rule(MayOnlyAccess::new(
         "entities".to_owned(),
         hash_set!["entities".to_owned(), "domain_values".to_owned()],
-        false,
+        RuleScope::Global,
     ))
     .with_access_rule(MayOnlyAccess::new(
         "utils".to_owned(),
         hash_set!["utils".to_owned()],
-        true,
+        RuleScope::Parent,
     ))
     .with_access_rule(MayNotAccess::new(
         "services".to_owned(),
         hash_set!["materials".to_owned()],
-        true,
+        RuleScope::Parent,
     ))
     .with_access_rule(MayNotAccess::new(
         "materials".to_owned(),
         hash_set!["tests".to_owned()],
-        true,
+        RuleScope::Parent,
     ));
     let module_tree = ModuleTree::new("src/lib.rs");
     assert!(architecture.validate_access_rules().is_ok());
@@ -344,7 +344,7 @@ fn exclude_modules_empty_list() {
         .with_access_rule(MayOnlyAccess::new(
             "file_1".to_owned(),
             hash_set!["file_2".to_owned()],
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/exclude_modules/main.rs");
     assert!(architecture.check_access_rules(&module_tree).is_ok());
@@ -361,7 +361,7 @@ fn exclude_modules_invalid_identifiers() {
         .with_access_rule(MayOnlyAccess::new(
             "file_1".to_owned(),
             hash_set!["file_2".to_owned()],
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/exclude_modules/main.rs");
 
@@ -375,7 +375,7 @@ fn exclude_modules_exact_match() {
         .with_access_rule(MayOnlyAccess::new(
             "file_1".to_owned(),
             hash_set!["file_2".to_owned()],
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/exclude_modules/main.rs");
 
@@ -389,7 +389,7 @@ fn exclude_modules_prefix_match() {
         .with_access_rule(MayOnlyAccess::new(
             "file_1".to_owned(),
             hash_set!["file_2".to_owned()],
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/exclude_modules/main.rs");
 
@@ -414,7 +414,7 @@ fn exclude_modules_accessor_excluded() {
         .with_access_rule(MayOnlyAccess::new(
             "file_1".to_owned(),
             hash_set!["file_2".to_owned()],
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/exclude_modules/main.rs");
 
@@ -429,7 +429,7 @@ fn exclude_modules_accessed_excluded() {
         .with_access_rule(MayOnlyAccess::new(
             "file_1".to_owned(),
             hash_set!["file_2".to_owned()],
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/exclude_modules/main.rs");
 
@@ -443,7 +443,7 @@ fn exclude_modules_may_not_access() {
         .with_access_rule(MayNotAccess::new(
             "file_1".to_owned(),
             hash_set!["file_2".to_owned()],
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/exclude_modules/main.rs");
 
@@ -461,7 +461,7 @@ fn exclude_modules_may_only_be_accessed_by() {
     .with_access_rule(MayOnlyBeAccessedBy::new(
         "file_2".to_owned(),
         hash_set!["file_1".to_owned()],
-        false,
+        RuleScope::Global,
     ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/exclude_modules/main.rs");
 
@@ -479,7 +479,7 @@ fn exclude_modules_may_not_be_accessed_by() {
     .with_access_rule(MayNotBeAccessedBy::new(
         "file_2".to_owned(),
         hash_set!["file_3".to_owned()],
-        false,
+        RuleScope::Global,
     ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/exclude_modules/main.rs");
 
@@ -529,7 +529,7 @@ fn exclude_modules_multiple_exclusions() {
     .with_access_rule(MayOnlyAccess::new(
         "file_1".to_owned(),
         hash_set!["file_2".to_owned(), "file_3".to_owned()],
-        false,
+        RuleScope::Global,
     ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/exclude_modules/main.rs");
 
@@ -575,7 +575,7 @@ fn test_checks_using_unavailable(#[case] crate_name: &str, #[case] module_path: 
         Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
             hash_set!["file_1".to_owned()],
             hash_set![crate_name.to_owned()],
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new(module_path);
     assert!(architecture.check_access_rules(&module_tree).is_err());
@@ -600,7 +600,7 @@ fn test_checks_available_libs(#[case] crate_name: &str, #[case] module_path: &st
         Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
             hash_set!["file_1".to_owned()],
             hash_set![crate_name.to_owned()],
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new(module_path);
 
@@ -615,7 +615,7 @@ fn available_white_list_comprehensive_positive() {
         Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
             hash_set!["file_1".to_owned()],
             hash_set!["std".to_owned(), "serde_json".to_owned()], // Only external crates
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new(
         "src/analyzer/tests/access_rules/available_white_list_comprehensive/main.rs",
@@ -634,7 +634,7 @@ fn available_white_list_comprehensive_missing_external_crate(#[case] white_list:
         Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
             hash_set!["file_1".to_owned()],
             white_list, // Missing serde_json
-            false,
+            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new(
         "src/analyzer/tests/access_rules/available_white_list_comprehensive/main.rs",

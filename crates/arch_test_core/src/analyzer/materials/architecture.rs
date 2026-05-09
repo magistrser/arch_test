@@ -26,6 +26,7 @@ use crate::parser::materials::ModuleTree;
 #[derive(Debug)]
 pub struct Architecture<'r> {
     layer_names: HashSet<String>,
+    subdomain_names: HashSet<String>,
     excluded_modules: HashSet<String>,
     access_rules: Vec<Box<dyn AccessRule + 'r>>,
 }
@@ -34,11 +35,17 @@ impl<'r> Architecture<'r> {
     pub fn new(layer_names: HashSet<String>) -> Self {
         Architecture {
             layer_names,
+            subdomain_names: HashSet::default(),
             excluded_modules: HashSet::default(),
             access_rules: Vec::default(),
         }
     }
 
+    pub fn with_subdomain_names(mut self, subdomain_names: HashSet<String>) -> Self {
+        self.subdomain_names = subdomain_names;
+        self
+    }
+    
     pub fn with_excluded_modules(mut self, excluded_modules: HashSet<String>) -> Self {
         self.excluded_modules = excluded_modules;
         self
@@ -62,9 +69,13 @@ impl<'r> Architecture<'r> {
         Ok(())
     }
 
+    pub fn subdomain_names(&self) -> &HashSet<String> {
+        &self.subdomain_names
+    }
+    
     pub fn check_access_rules(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation<'_>> {
         for access_rule in self.access_rules.iter() {
-            access_rule.check(module_tree, &self.excluded_modules)?;
+            access_rule.check(module_tree, &self.excluded_modules, &self.subdomain_names)?;
         }
         Ok(())
     }

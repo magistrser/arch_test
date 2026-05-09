@@ -5,7 +5,7 @@ use velcro::hash_set;
 
 use crate::analyzer::domain_values::access_rules::{
     Available, MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
-    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess,
+    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, RuleScope,
 };
 use crate::analyzer::domain_values::RuleViolationType;
 use crate::analyzer::entities::RuleViolation;
@@ -28,6 +28,7 @@ pub trait AccessRule: Debug {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
+        subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>>;
     fn validate(&self, layer_names: &HashSet<String>) -> bool;
 }
@@ -37,6 +38,7 @@ impl AccessRule for MayOnlyAccess {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
+        _subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -64,7 +66,7 @@ impl AccessRule for MayOnlyAccess {
                             use_relation.used_object().node_index(),
                             tree,
                         )
-                        && (!self.when_same_parent()
+                        && (self.scope() == &RuleScope::Global
                             || tree[use_relation.used_object().node_index()].parent_index()
                                 == node.parent_index())
                 })
@@ -93,6 +95,7 @@ impl AccessRule for MayNotAccess {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
+        _subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -120,7 +123,7 @@ impl AccessRule for MayNotAccess {
                             use_relation.used_object().node_index(),
                             tree,
                         ))
-                        && (!self.when_same_parent()
+                        && (self.scope() == &RuleScope::Global
                             || tree[use_relation.used_object().node_index()].parent_index()
                                 == node.parent_index())
                 })
@@ -149,6 +152,7 @@ impl AccessRule for MayOnlyBeAccessedBy {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
+        _subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -176,7 +180,7 @@ impl AccessRule for MayOnlyBeAccessedBy {
                             use_relation.used_object().node_index(),
                             tree,
                         ))
-                        && (!self.when_same_parent()
+                        && (self.scope() == &RuleScope::Global
                             || tree[use_relation.used_object().node_index()].parent_index()
                                 == node.parent_index())
                 })
@@ -205,6 +209,7 @@ impl AccessRule for MayNotBeAccessedBy {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
+        _subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -230,7 +235,7 @@ impl AccessRule for MayNotBeAccessedBy {
                             use_relation.used_object().node_index(),
                             tree,
                         ))
-                        && (!self.when_same_parent()
+                        && (self.scope() == &RuleScope::Global
                             || tree[use_relation.used_object().node_index()].parent_index()
                                 == node.parent_index())
                 })
@@ -259,6 +264,7 @@ impl AccessRule for NoParentAccess {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
+        _subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -301,6 +307,7 @@ impl AccessRule for NoModuleCyclicDependencies {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
+        _subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         if let Some(involved) = contains_cyclic_dependency(module_tree) {
@@ -338,6 +345,7 @@ impl AccessRule for NoLayerCyclicDependencies {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
+        _subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         if let Some(involved) = contains_cyclic_dependency_on_any_level(module_tree) {
@@ -375,6 +383,7 @@ impl AccessRule for Available {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
+        _subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
 
@@ -397,7 +406,7 @@ impl AccessRule for Available {
                 continue;
             }
 
-            if self.when_same_parent() {
+            if self.scope() == &RuleScope::Parent {
                 let parent_matches = node_parent.is_some_and(|parent_idx| {
                     self.layer_names().contains(tree[parent_idx].module_name())
                 });

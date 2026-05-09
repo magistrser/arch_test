@@ -6,7 +6,7 @@ mod test {
 
     use arch_validation_core::access_rules::{
         MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
-        NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess,
+        NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, RuleScope,
     };
     use arch_validation_core::{hash_set, Architecture, ModuleTree};
 
@@ -28,22 +28,22 @@ mod test {
         .with_access_rule(MayNotAccess::new(
             "parser".to_owned(),
             hash_set!["analyzer".to_owned()],
-            true,
+            RuleScope::Parent,
         ))
         .with_access_rule(MayOnlyAccess::new(
             "analyzer".to_owned(),
             hash_set!["analyzer".to_owned(), "parser".to_owned()],
-            true,
+            RuleScope::Parent,
         ))
         .with_access_rule(MayOnlyBeAccessedBy::new(
             "materials".to_owned(),
             hash_set!["tests".to_owned()],
-            true,
+            RuleScope::Parent,
         ))
         .with_access_rule(MayNotBeAccessedBy::new(
             "tests".to_owned(),
             hash_set!["materials".to_owned()],
-            true,
+            RuleScope::Parent,
         ));
         let module_tree = ModuleTree::new("../../crates/arch_test_core/src/lib.rs");
         assert!(architecture.validate_access_rules().is_ok());

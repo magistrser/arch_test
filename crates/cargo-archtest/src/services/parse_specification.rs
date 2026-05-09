@@ -4,7 +4,7 @@ use std::path::Path;
 
 use arch_validation_core::access_rules::{
     Available, MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
-    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess,
+    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, RuleScope,
 };
 use arch_validation_core::hash_set;
 use arch_validation_core::Architecture;
@@ -17,8 +17,10 @@ pub fn parse_specification(specification_path: &Path) -> Result<Architecture<'_>
             .map_err(|_| Failure::SpecificationCouldNotBeParsed)?;
 
     let layer_names = specification.layer_names.clone();
+    let subdomain_names: Vec<String> = specification.subdomain_names.unwrap_or_default();
     let excluded_modules: Vec<String> = specification.exclude_modules.unwrap_or_default();
     let mut architecture = Architecture::new(hash_set![..layer_names])
+        .with_subdomain_names(hash_set![..subdomain_names])
         .with_excluded_modules(hash_set![..excluded_modules]);
     for access_rule in specification.access_rules {
         match access_rule {
@@ -34,61 +36,90 @@ pub fn parse_specification(specification_path: &Path) -> Result<Architecture<'_>
             AccessRule::MayOnlyAccess {
                 accessor,
                 accessed,
+                scope,
                 when_same_parent,
             } => {
+                let effective_scope = resolve_rule_scope(scope, when_same_parent);
                 architecture = architecture.with_access_rule(MayOnlyAccess::new(
                     accessor,
                     hash_set![..accessed],
-                    when_same_parent,
+                    effective_scope,
                 ))
             }
             AccessRule::MayNotAccess {
                 accessor,
                 accessed,
+                scope,
                 when_same_parent,
             } => {
+                let effective_scope = resolve_rule_scope(scope, when_same_parent);
                 architecture = architecture.with_access_rule(MayNotAccess::new(
                     accessor,
                     hash_set![..accessed],
-                    when_same_parent,
+                    effective_scope,
                 ))
             }
             AccessRule::MayOnlyBeAccessedBy {
                 accessors,
                 accessed,
+                scope,
                 when_same_parent,
             } => {
+                let effective_scope = resolve_rule_scope(scope, when_same_parent);
                 architecture = architecture.with_access_rule(MayOnlyBeAccessedBy::new(
                     accessed,
                     hash_set![..accessors],
-                    when_same_parent,
+                    effective_scope,
                 ))
             }
             AccessRule::MayNotBeAccessedBy {
                 accessors,
                 accessed,
+                scope,
                 when_same_parent,
             } => {
+                let effective_scope = resolve_rule_scope(scope, when_same_parent);
                 architecture = architecture.with_access_rule(MayNotBeAccessedBy::new(
                     accessed,
                     hash_set![..accessors],
-                    when_same_parent,
+                    effective_scope,
                 ))
             }
             AccessRule::Available {
                 layer_names,
                 allowed_crates,
+                scope,
                 when_same_parent,
             } => {
+                let effective_scope = resolve_rule_scope(scope, when_same_parent);
                 architecture = architecture.with_access_rule(Available::new(
                     hash_set![..layer_names],
                     hash_set![..allowed_crates],
-                    when_same_parent,
+                    effective_scope,
                 ))
             }
         }
     }
     Ok(architecture)
+}
+
+fn resolve_rule_scope(scope: Option<String>, when_same_parent: Option<bool>) -> RuleScope {
+    if let Some(s) = scope {
+        match s.as_str() {
+            "Global" => RuleScope::Global,
+            "Parent" => RuleScope::Parent,
+            "Subdomain" => RuleScope::Subdomain,
+            _ => RuleScope::Global,
+        }
+    } else if let Some(wsp) = when_same_parent {
+        if wsp {
+            RuleScope::Parent
+        } else {
+            RuleScope::Global
+        }
+    } else {
+        RuleScope::Global
+    }
 }
 
 fn read_file_content(file_path: &Path) -> Result<String, Failure> {

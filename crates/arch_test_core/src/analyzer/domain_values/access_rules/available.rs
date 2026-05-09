@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use super::RuleScope;
+
 /// # Available - white_list for libraries
 /// This access rule restricts the use of external crates (including standard library)
 /// to specific layers. Only the crates listed in `allowed_crates` can be used in modules
@@ -11,19 +13,19 @@ use std::collections::HashSet;
 pub struct Available {
     layer_names: HashSet<String>,
     allowed_crates: HashSet<String>,
-    when_same_parent: bool,
+    scope: RuleScope,
 }
 
 impl Available {
     pub fn new(
         layer_names: HashSet<String>,
         allowed_crates: HashSet<String>,
-        when_same_parent: bool,
+        scope: RuleScope,
     ) -> Self {
         Available {
             layer_names,
             allowed_crates,
-            when_same_parent,
+            scope,
         }
     }
 
@@ -34,8 +36,8 @@ impl Available {
     pub fn allowed_crates(&self) -> &HashSet<String> {
         &self.allowed_crates
     }
-
-    pub fn when_same_parent(&self) -> bool {
-        self.when_same_parent
+    
+    pub fn scope(&self) -> &RuleScope {
+        &self.scope
     }
 }

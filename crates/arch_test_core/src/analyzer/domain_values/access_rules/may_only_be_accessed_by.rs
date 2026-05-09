@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use super::RuleScope;
+
 /// # `Accessed` may only be accessed by `accessors` relation
 /// This access rule relation states that the `accessors` layers may only access the specified `accessed` layer.
 /// As layer name it attempts to match either the module name or the parent module name, which is the directory the files were placed in.
@@ -8,15 +10,15 @@ use std::collections::HashSet;
 pub struct MayOnlyBeAccessedBy {
     accessors: HashSet<String>,
     accessed: String,
-    when_same_parent: bool,
+    scope: RuleScope,
 }
 
 impl MayOnlyBeAccessedBy {
-    pub fn new(accessed: String, accessor_layers: HashSet<String>, when_same_parent: bool) -> Self {
+    pub fn new(accessed: String, accessor_layers: HashSet<String>, scope: RuleScope) -> Self {
         MayOnlyBeAccessedBy {
             accessors: accessor_layers,
             accessed,
-            when_same_parent,
+            scope,
         }
     }
 
@@ -27,8 +29,8 @@ impl MayOnlyBeAccessedBy {
     pub fn accessed(&self) -> &String {
         &self.accessed
     }
-
-    pub fn when_same_parent(&self) -> bool {
-        self.when_same_parent
+    
+    pub fn scope(&self) -> &RuleScope {
+        &self.scope
     }
 }

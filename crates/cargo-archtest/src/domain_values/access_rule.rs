@@ -6,27 +6,41 @@ pub enum AccessRule {
     MayOnlyAccess {
         accessor: String,
         accessed: Vec<String>,
-        when_same_parent: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        scope: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        when_same_parent: Option<bool>,
     },
     MayNotAccess {
         accessor: String,
         accessed: Vec<String>,
-        when_same_parent: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        scope: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        when_same_parent: Option<bool>,
     },
     MayOnlyBeAccessedBy {
         accessors: Vec<String>,
         accessed: String,
-        when_same_parent: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        scope: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        when_same_parent: Option<bool>,
     },
     MayNotBeAccessedBy {
         accessors: Vec<String>,
         accessed: String,
-        when_same_parent: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        scope: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        when_same_parent: Option<bool>,
     },
     Available {
         layer_names: Vec<String>,
         allowed_crates: Vec<String>,
-        #[serde(default)]
-        when_same_parent: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        scope: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        when_same_parent: Option<bool>,
     },
 }
