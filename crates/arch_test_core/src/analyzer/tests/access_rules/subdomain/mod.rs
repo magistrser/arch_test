@@ -1,7 +1,9 @@
 use velcro::hash_set;
 
+use crate::analyzer::domain_values::access_rules::{MayNotAccess, RuleScope};
 use crate::analyzer::services::get_module_subdomain;
 use crate::parser::materials::ModuleTree;
+use crate::Architecture;
 
 #[test]
 fn test_get_module_subdomain_flat_structure() {
@@ -114,4 +116,45 @@ fn test_get_module_subdomain_cross_subdomain() {
     assert!(view_model_subdomain.is_some());
     assert_eq!(processing_entity_subdomain.unwrap(), "fixation_processing");
     assert_eq!(view_model_subdomain.unwrap(), "fixation_view");
+}
+#[test]
+fn subdomain_complete_layer_specification_passes() {
+    let architecture = Architecture::new(hash_set![
+        "domain".to_owned(),
+        "infrastructure".to_owned(),
+    ])
+    .with_subdomain_names(hash_set![
+        "fixation_processing".to_owned(),
+        "fixation_view".to_owned(),
+    ]);
+    let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/subdomain/main.rs");
+    assert!(architecture.check_complete_layer_specification(&module_tree).is_ok());
+}
+
+#[test]
+fn flat_layer_direction_still_works_with_new_api() {
+    // Same as layer_dependency_direction_violation but using RuleScope::Global
+    let architecture = Architecture::new(hash_set!["application".to_owned(), "infra".to_owned()])
+        .with_access_rule(MayNotAccess::new(
+            "application".to_owned(),
+            hash_set!["infra".to_owned()],
+            RuleScope::Global,
+        ));
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/layer_dependency_direction/main.rs");
+    assert!(architecture.check_access_rules(&module_tree).is_err());
+}
+
+#[test]
+fn subdomain_scope_is_noop_without_subdomain_names() {
+    // Without subdomain_names, Subdomain scope should not fire
+    let architecture = Architecture::new(hash_set!["domain".to_owned(), "infrastructure".to_owned()])
+        .with_access_rule(MayNotAccess::new(
+            "infrastructure".to_owned(),
+            hash_set!["domain".to_owned()],
+            RuleScope::Subdomain,
+        ));
+    let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/subdomain/main.rs");
+    // Subdomain scope without subdomain_names → no subdomain found → always skip → OK
+    assert!(architecture.check_access_rules(&module_tree).is_ok());
 }

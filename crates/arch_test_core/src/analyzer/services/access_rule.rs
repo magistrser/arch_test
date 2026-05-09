@@ -38,7 +38,7 @@ impl AccessRule for MayOnlyAccess {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
-        _subdomain_names: &HashSet<String>,
+        subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -66,9 +66,22 @@ impl AccessRule for MayOnlyAccess {
                             use_relation.used_object().node_index(),
                             tree,
                         )
-                        && (self.scope() == &RuleScope::Global
-                            || tree[use_relation.used_object().node_index()].parent_index()
-                                == node.parent_index())
+                        && match self.scope() {
+                            RuleScope::Global => true,
+                            RuleScope::Parent => {
+                                tree[use_relation.used_object().node_index()].parent_index()
+                                    == node.parent_index()
+                            }
+                            RuleScope::Subdomain => {
+                                let source_sub = get_module_subdomain(node.index(), tree, subdomain_names);
+                                let target_sub = get_module_subdomain(
+                                    use_relation.used_object().node_index(),
+                                    tree,
+                                    subdomain_names,
+                                );
+                                source_sub.is_some() && source_sub == target_sub
+                            }
+                        }
                 })
             {
                 return Err(RuleViolation::new(
@@ -95,7 +108,7 @@ impl AccessRule for MayNotAccess {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
-        _subdomain_names: &HashSet<String>,
+        subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -123,9 +136,22 @@ impl AccessRule for MayNotAccess {
                             use_relation.used_object().node_index(),
                             tree,
                         ))
-                        && (self.scope() == &RuleScope::Global
-                            || tree[use_relation.used_object().node_index()].parent_index()
-                                == node.parent_index())
+                        && match self.scope() {
+                            RuleScope::Global => true,
+                            RuleScope::Parent => {
+                                tree[use_relation.used_object().node_index()].parent_index()
+                                    == node.parent_index()
+                            }
+                            RuleScope::Subdomain => {
+                                let source_sub = get_module_subdomain(node.index(), tree, subdomain_names);
+                                let target_sub = get_module_subdomain(
+                                    use_relation.used_object().node_index(),
+                                    tree,
+                                    subdomain_names,
+                                );
+                                source_sub.is_some() && source_sub == target_sub
+                            }
+                        }
                 })
             {
                 return Err(RuleViolation::new(
@@ -152,7 +178,7 @@ impl AccessRule for MayOnlyBeAccessedBy {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
-        _subdomain_names: &HashSet<String>,
+        subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -180,9 +206,22 @@ impl AccessRule for MayOnlyBeAccessedBy {
                             use_relation.used_object().node_index(),
                             tree,
                         ))
-                        && (self.scope() == &RuleScope::Global
-                            || tree[use_relation.used_object().node_index()].parent_index()
-                                == node.parent_index())
+                        && match self.scope() {
+                            RuleScope::Global => true,
+                            RuleScope::Parent => {
+                                tree[use_relation.used_object().node_index()].parent_index()
+                                    == node.parent_index()
+                            }
+                            RuleScope::Subdomain => {
+                                let source_sub = get_module_subdomain(node.index(), tree, subdomain_names);
+                                let target_sub = get_module_subdomain(
+                                    use_relation.used_object().node_index(),
+                                    tree,
+                                    subdomain_names,
+                                );
+                                source_sub.is_some() && source_sub == target_sub
+                            }
+                        }
                 })
             {
                 return Err(RuleViolation::new(
@@ -209,7 +248,7 @@ impl AccessRule for MayNotBeAccessedBy {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
-        _subdomain_names: &HashSet<String>,
+        subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -235,9 +274,22 @@ impl AccessRule for MayNotBeAccessedBy {
                             use_relation.used_object().node_index(),
                             tree,
                         ))
-                        && (self.scope() == &RuleScope::Global
-                            || tree[use_relation.used_object().node_index()].parent_index()
-                                == node.parent_index())
+                        && match self.scope() {
+                            RuleScope::Global => true,
+                            RuleScope::Parent => {
+                                tree[use_relation.used_object().node_index()].parent_index()
+                                    == node.parent_index()
+                            }
+                            RuleScope::Subdomain => {
+                                let source_sub = get_module_subdomain(node.index(), tree, subdomain_names);
+                                let target_sub = get_module_subdomain(
+                                    use_relation.used_object().node_index(),
+                                    tree,
+                                    subdomain_names,
+                                );
+                                source_sub.is_some() && source_sub == target_sub
+                            }
+                        }
                 })
             {
                 return Err(RuleViolation::new(
@@ -383,7 +435,7 @@ impl AccessRule for Available {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
-        _subdomain_names: &HashSet<String>,
+        subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
 
@@ -406,13 +458,22 @@ impl AccessRule for Available {
                 continue;
             }
 
-            if self.scope() == &RuleScope::Parent {
-                let parent_matches = node_parent.is_some_and(|parent_idx| {
-                    self.layer_names().contains(tree[parent_idx].module_name())
-                });
-                if !parent_matches {
-                    continue;
+            match self.scope() {
+                RuleScope::Parent => {
+                    let parent_matches = node_parent.is_some_and(|parent_idx| {
+                        self.layer_names().contains(tree[parent_idx].module_name())
+                    });
+                    if !parent_matches {
+                        continue;
+                    }
                 }
+                RuleScope::Subdomain => {
+                    let node_sub = get_module_subdomain(node.index(), tree, subdomain_names);
+                    if node_sub.is_none() {
+                        continue;
+                    }
+                }
+                RuleScope::Global => {}
             }
 
             for usable_object in node.usable_objects() {

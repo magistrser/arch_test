@@ -104,6 +104,9 @@ pub fn parse_specification(specification_path: &Path) -> Result<Architecture<'_>
 }
 
 fn resolve_rule_scope(scope: Option<String>, when_same_parent: Option<bool>) -> RuleScope {
+    if scope.is_some() && when_same_parent.is_some() {
+        eprintln!("Warning: both 'scope' and 'when_same_parent' specified. Using 'scope'.");
+    }
     if let Some(s) = scope {
         match s.as_str() {
             "Global" => RuleScope::Global,

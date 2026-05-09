@@ -87,15 +87,14 @@ impl<'r> Architecture<'r> {
         let tree: &Vec<ModuleNode> = module_tree.tree();
         if tree.iter().any(|node| {
             let node_path = node.get_fully_qualified_path(tree);
-            // Skip excluded modules
             if self.is_module_excluded(&node_path) {
                 return false;
             }
-            node.parent_index().is_some()
-                && !self.layer_names.contains(node.module_name())
-                && !self
-                    .layer_names
-                    .contains(tree[node.parent_index().unwrap()].module_name())
+            if node.parent_index().is_none() {
+                return false;
+            }
+            !self.is_node_or_ancestor_in_set(node.index(), tree, &self.layer_names)
+                && !self.is_node_or_ancestor_in_set(node.index(), tree, &self.subdomain_names)
         }) {
             return Err(RuleViolation::new(
                 RuleViolationType::IncompleteLayerSpecification,
@@ -104,6 +103,24 @@ impl<'r> Architecture<'r> {
             ));
         }
         Ok(())
+    }
+
+    /// Walk from node up to root. Return true if ANY ancestor's module_name is in set.
+    fn is_node_or_ancestor_in_set(
+        &self,
+        mut node_index: usize,
+        tree: &[ModuleNode],
+        names: &HashSet<String>,
+    ) -> bool {
+        loop {
+            if names.contains(tree[node_index].module_name()) {
+                return true;
+            }
+            match tree[node_index].parent_index() {
+                Some(parent_idx) => node_index = parent_idx,
+                None => return false,
+            }
+        }
     }
 
     /// Check if a module is excluded from architecture checks.
