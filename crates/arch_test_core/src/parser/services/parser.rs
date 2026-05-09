@@ -630,7 +630,9 @@ fn parse_file_rec(
         | SyntaxKind::TYPE_BOUND_LIST
         | SyntaxKind::FOR_TYPE
         | SyntaxKind::TYPE_BOUND
-        | SyntaxKind::MACRO_ITEMS => {
+        | SyntaxKind::MACRO_ITEMS
+        | SyntaxKind::LET_ELSE
+        | SyntaxKind::CONST_ARG => {
             for child in syntax_node.children() {
                 parse_file_rec(&child, module_references, usable_objects, current_index);
             }
@@ -803,7 +805,8 @@ fn parse_nested_tuple_type(syntax_node: &SyntaxNode) -> Vec<(String, TextRange)>
         | SyntaxKind::WILDCARD_PAT
         | SyntaxKind::LIFETIME
         | SyntaxKind::VISIBILITY
-        | SyntaxKind::ATTR => {
+        | SyntaxKind::ATTR
+        | SyntaxKind::CONST_ARG => {
             return result;
         }
         SyntaxKind::TUPLE_TYPE
@@ -820,7 +823,8 @@ fn parse_nested_tuple_type(syntax_node: &SyntaxNode) -> Vec<(String, TextRange)>
         | SyntaxKind::TYPE_BOUND_LIST
         | SyntaxKind::DYN_TRAIT_TYPE
         | SyntaxKind::FOR_TYPE
-        | SyntaxKind::TYPE_BOUND => {
+        | SyntaxKind::TYPE_BOUND
+        | SyntaxKind::FOR_BINDER => {
             for child in syntax_node.children() {
                 result.append(&mut parse_nested_tuple_type(&child));
             }
