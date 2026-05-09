@@ -1,7 +1,7 @@
 use std::fs::DirEntry;
 use std::path::Path;
 
-use ra_ap_syntax::{SourceFile, SyntaxKind, SyntaxNode, SyntaxNodeChildren, TextRange, TextSize};
+use ra_ap_syntax::{Edition, SourceFile, SyntaxKind, SyntaxNode, SyntaxNodeChildren, TextRange, TextSize};
 
 use crate::parser::domain_values::{ObjectType, UsableObject};
 use crate::parser::entities::ModuleNode;
@@ -16,7 +16,7 @@ pub fn parse_main_or_mod_file_into_tree(
 ) {
     let mut module_references: Vec<(usize, String, Option<String>)> = Vec::new();
 
-    let result = SourceFile::parse(&read_file_content(file_path));
+    let result = SourceFile::parse(&read_file_content(file_path), Edition::Edition2018);
     parse_syntax_node_tree(
         tree,
         result.syntax_node().children(),
@@ -415,6 +415,23 @@ fn parse_file_rec(
                         let mut found_path = false;
                         for attr_child in child.children() {
                             match attr_child.kind() {
+                                SyntaxKind::KEY_VALUE_META => {
+                                    for meta_child in attr_child.children() {
+                                        match meta_child.kind() {
+                                            SyntaxKind::PATH => {
+                                                if meta_child.to_string() == *"path" {
+                                                    found_path = true;
+                                                }
+                                            }
+                                            SyntaxKind::LITERAL => {
+                                                if found_path {
+                                                    path = Some(meta_child.to_string());
+                                                }
+                                            }
+                                            _ => continue,
+                                        }
+                                    }
+                                }
                                 SyntaxKind::PATH => {
                                     if attr_child.to_string() == *"path" {
                                         found_path = true;
@@ -570,7 +587,6 @@ fn parse_file_rec(
         }
         SyntaxKind::NAME_REF
         | SyntaxKind::OR_PAT
-        | SyntaxKind::BOX_EXPR
         | SyntaxKind::PTR_TYPE
         | SyntaxKind::INFER_TYPE
         | SyntaxKind::ARRAY_TYPE
@@ -579,7 +595,10 @@ fn parse_file_rec(
         | SyntaxKind::RANGE_EXPR
         | SyntaxKind::FIELD_EXPR
         | SyntaxKind::BLOCK_EXPR
+        | SyntaxKind::STMT_LIST
         | SyntaxKind::LET_STMT
+        | SyntaxKind::LET_EXPR
+        | SyntaxKind::MACRO_EXPR
         | SyntaxKind::STATIC
         | SyntaxKind::CONST
         | SyntaxKind::BIN_EXPR
@@ -598,9 +617,7 @@ fn parse_file_rec(
         | SyntaxKind::TRY_EXPR
         | SyntaxKind::LOOP_EXPR
         | SyntaxKind::ARRAY_EXPR
-        | SyntaxKind::EFFECT_EXPR
         | SyntaxKind::AWAIT_EXPR
-        | SyntaxKind::CONDITION
         | SyntaxKind::ARG_LIST
         | SyntaxKind::EXPR_STMT
         | SyntaxKind::WHERE_CLAUSE
@@ -610,7 +627,8 @@ fn parse_file_rec(
         | SyntaxKind::CONST_PARAM
         | SyntaxKind::TYPE_BOUND_LIST
         | SyntaxKind::FOR_TYPE
-        | SyntaxKind::TYPE_BOUND => {
+        | SyntaxKind::TYPE_BOUND
+        | SyntaxKind::MACRO_ITEMS => {
             for child in syntax_node.children() {
                 parse_file_rec(&child, module_references, usable_objects, current_index);
             }

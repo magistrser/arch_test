@@ -13,10 +13,13 @@ include = ["src/", "architecture.json", "../../README.md", "../../LICENCE"]
 
 [dependencies]
 velcro = "0.5.3"
-ra_ap_syntax = "0.0.59"
-itertools = "0.10.1"
+ra_ap_syntax = "0.0.331"
+itertools = "0.14.0"
 
 [badges.codecov]
 branch = "master"
 repository = "Geigerkind/arch_test"
 service = "github"
+
+[dev-dependencies]
+rstest = "0.26.1"
