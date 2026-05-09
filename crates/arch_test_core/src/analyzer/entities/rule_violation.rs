@@ -97,6 +97,30 @@ impl<'r> RuleViolation<'r> {
                     acc_file_line_number, acc_file_column_range, acc_file_line
                 );
             }
+            RuleViolationType::NotAvailable => {
+                let using_object = self.involved_object_uses[0].using_object();
+                let (in_file_line_number, in_file_column_range, in_file_line) =
+                    find_text_range_in_file(
+                        tree[using_object.node_index()].file_path(),
+                        using_object.usable_object().text_range(),
+                    );
+                println!("Violated rule     | {:?}", self.access_rule);
+                println!("-------------------");
+                println!(
+                    "File              | {}",
+                    tree[using_object.node_index()].file_path()
+                );
+                println!(
+                    "Object            | {:?}: {}@{:?}",
+                    using_object.usable_object().object_type(),
+                    using_object.usable_object().object_name(),
+                    using_object.usable_object().text_range()
+                );
+                println!(
+                    "Line in file      | ({}, {:?}): {}",
+                    in_file_line_number, in_file_column_range, in_file_line
+                );
+            }
             RuleViolationType::Cycle => {
                 println!("Violated rule: {:?}", self.access_rule);
                 for use_relation in self.involved_object_uses.iter() {

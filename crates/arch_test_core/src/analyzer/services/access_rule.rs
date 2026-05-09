@@ -408,7 +408,6 @@ impl AccessRule for Available {
 
             for usable_object in node.usable_objects() {
                 if let Some(crate_name) = self.extract_root_crate(usable_object) {
-                    // Check if this crate is allowed
                     if !self.allowed_crates().contains(&crate_name) {
                         let node_path = node.get_fully_qualified_path(tree);
                         let object_use = crate::parser::domain_values::ObjectUse::new(
@@ -421,7 +420,7 @@ impl AccessRule for Available {
                             object_use,
                         );
                         return Err(RuleViolation::new(
-                            RuleViolationType::SingleLocation,
+                            RuleViolationType::NotAvailable,
                             Box::new(self.clone()),
                             vec![use_relation],
                         ));
