@@ -508,6 +508,27 @@ fn has_parent_matching_name(
     false
 }
 
+/// Find the nearest ancestor whose module_name is in subdomain_names.
+/// Walks up the tree from node to root.
+/// Returns None if no such ancestor exists (flat structure or no subdomains defined).
+// TODO
+#[allow(dead_code)]
+pub(crate) fn get_module_subdomain<'tree>(
+    node_index: usize,
+    tree: &'tree [ModuleNode],
+    subdomain_names: &HashSet<String>,
+) -> Option<&'tree str> {
+    let mut current = node_index;
+    while let Some(parent_idx) = tree[current].parent_index() {
+        let parent_name = tree[parent_idx].module_name();
+        if subdomain_names.contains(parent_name) {
+            return Some(parent_name);
+        }
+        current = parent_idx;
+    }
+    None
+}
+
 /// Check if a module is excluded from architecture checks.
 /// Supports exact match and prefix matching (if exclusion ends with "::").
 fn is_module_excluded(fully_qualified_path: &str, excluded_modules: &HashSet<String>) -> bool {

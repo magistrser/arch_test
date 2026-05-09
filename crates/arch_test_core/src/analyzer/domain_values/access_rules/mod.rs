@@ -8,20 +8,15 @@ pub use self::no_module_cyclic_dependencies::NoModuleCyclicDependencies;
 pub use self::no_parent_access::NoParentAccess;
 
 /// Defines the scope within which an access rule is enforced.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum RuleScope {
     /// Rule applies across all modules regardless of parent/subdomain
+    #[default]
     Global,
     /// Rule applies only when source and target share the same direct parent
     Parent,
     /// Rule applies only when source and target are within the same subdomain
     Subdomain,
-}
-
-impl Default for RuleScope {
-    fn default() -> Self {
-        RuleScope::Global
-    }
 }
 
 mod available;
