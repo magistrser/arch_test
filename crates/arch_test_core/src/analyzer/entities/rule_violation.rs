@@ -98,28 +98,31 @@ impl<'r> RuleViolation<'r> {
                 );
             }
             RuleViolationType::SingleObject => {
-                let using_object = self.involved_object_uses[0].using_object();
-                let (in_file_line_number, in_file_column_range, in_file_line) =
-                    find_text_range_in_file(
-                        tree[using_object.node_index()].file_path(),
-                        using_object.usable_object().text_range(),
-                    );
                 println!("Violated rule     | {:?}", self.access_rule);
                 println!("-------------------");
-                println!(
-                    "File              | {}",
-                    tree[using_object.node_index()].file_path()
-                );
-                println!(
-                    "Object            | {:?}: {}@{:?}",
-                    using_object.usable_object().object_type(),
-                    using_object.usable_object().object_name(),
-                    using_object.usable_object().text_range()
-                );
-                println!(
-                    "Line in file      | ({}, {:?}): {}",
-                    in_file_line_number, in_file_column_range, in_file_line
-                );
+                for use_relation in self.involved_object_uses.iter() {
+                    let using_object = use_relation.using_object();
+                    let (in_file_line_number, in_file_column_range, in_file_line) =
+                        find_text_range_in_file(
+                            tree[using_object.node_index()].file_path(),
+                            using_object.usable_object().text_range(),
+                        );
+                    println!(
+                        "File              | {}",
+                        tree[using_object.node_index()].file_path()
+                    );
+                    println!(
+                        "Object            | {:?}: {}@{:?}",
+                        using_object.usable_object().object_type(),
+                        using_object.usable_object().object_name(),
+                        using_object.usable_object().text_range()
+                    );
+                    println!(
+                        "Line in file      | ({}, {:?}): {}",
+                        in_file_line_number, in_file_column_range, in_file_line
+                    );
+                    println!("-------------------");
+                }
             }
             RuleViolationType::Cycle => {
                 println!("Violated rule: {:?}", self.access_rule);
@@ -148,14 +151,15 @@ fn find_text_range_in_file(file_path: &str, text_range: &TextRange) -> (usize, T
     let mut text_conquered: u32 = 0;
     for (line_index, line) in reader.lines().enumerate() {
         if let Ok(line) = line {
-            if TextSize::from(text_conquered + line.len() as u32) >= text_range.end() {
+            let line_end = text_conquered + line.len() as u32 + 1;
+            if TextSize::from(line_end) >= text_range.end() {
                 return (
                     line_index + 1,
                     TextRange::new(TextSize::from(1), TextSize::from(line.len() as u32)),
                     line,
                 );
             }
-            text_conquered += line.len() as u32;
+            text_conquered = line_end;
         }
     }
     unreachable!()

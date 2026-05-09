@@ -438,6 +438,7 @@ impl AccessRule for Available {
         subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
+        let mut violations = Vec::new();
 
         for node in tree.iter() {
             let node_path = node.get_fully_qualified_path(tree);
@@ -483,14 +484,18 @@ impl AccessRule for Available {
                             object_use.clone(),
                             object_use,
                         );
-                        return Err(RuleViolation::new(
-                            RuleViolationType::SingleObject,
-                            Box::new(self.clone()),
-                            vec![use_relation],
-                        ));
+                        violations.push(use_relation);
                     }
                 }
             }
+        }
+
+        if !violations.is_empty() {
+            return Err(RuleViolation::new(
+                RuleViolationType::SingleObject,
+                Box::new(self.clone()),
+                violations,
+            ));
         }
 
         Ok(())
