@@ -446,13 +446,8 @@ impl AccessRule for Available {
                 continue;
             }
 
-            let node_layer = node.module_name();
-            let node_parent = node.parent_index();
-
-            let is_in_target_layer = self.layer_names().contains(node_layer)
-                || node_parent.is_some_and(|parent_idx| {
-                    self.layer_names().contains(tree[parent_idx].module_name())
-                });
+            let is_in_target_layer = self.layer_names().contains(node.module_name())
+                || has_parent_matching_name(self.layer_names(), node.index(), tree);
 
             if !is_in_target_layer {
                 continue;
@@ -460,9 +455,8 @@ impl AccessRule for Available {
 
             match self.scope() {
                 RuleScope::Parent => {
-                    let parent_matches = node_parent.is_some_and(|parent_idx| {
-                        self.layer_names().contains(tree[parent_idx].module_name())
-                    });
+                    let parent_matches =
+                        has_parent_matching_name(self.layer_names(), node.index(), tree);
                     if !parent_matches {
                         continue;
                     }

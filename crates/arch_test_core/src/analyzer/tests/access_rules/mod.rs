@@ -667,3 +667,48 @@ fn available_white_list_comprehensive_missing_external_crate(#[case] white_list:
         .unwrap()
         .print(module_tree.tree());
 }
+
+#[test]
+fn available_deep_nesting_detects_violation() {
+    let architecture =
+        Architecture::new(hash_set!["domain".to_owned()]).with_access_rule(Available::new(
+            hash_set!["domain".to_owned()],
+            hash_set!["std".to_owned()],
+            RuleScope::Global,
+        ));
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/available_deep_nesting/main.rs");
+    assert!(architecture.check_access_rules(&module_tree).is_err());
+    architecture
+        .check_access_rules(&module_tree)
+        .err()
+        .unwrap()
+        .print(module_tree.tree());
+}
+
+#[test]
+fn available_deep_nesting_allows_std_and_serde() {
+    let architecture =
+        Architecture::new(hash_set!["domain".to_owned()]).with_access_rule(Available::new(
+            hash_set!["domain".to_owned()],
+            hash_set!["std".to_owned(), "serde".to_owned()],
+            RuleScope::Global,
+        ));
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/available_deep_nesting/main.rs");
+    assert!(architecture.check_access_rules(&module_tree).is_ok());
+}
+
+#[test]
+fn available_deep_nesting_flat_structure_still_works() {
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
+            hash_set!["file_1".to_owned()],
+            hash_set!["std".to_owned(), "serde_json".to_owned()],
+            RuleScope::Global,
+        ));
+    let module_tree = ModuleTree::new(
+        "src/analyzer/tests/access_rules/available_white_list_comprehensive/main.rs",
+    );
+    assert!(architecture.check_access_rules(&module_tree).is_ok());
+}
