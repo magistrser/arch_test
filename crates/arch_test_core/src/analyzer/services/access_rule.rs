@@ -420,7 +420,7 @@ impl AccessRule for Available {
                             object_use,
                         );
                         return Err(RuleViolation::new(
-                            RuleViolationType::NotAvailable,
+                            RuleViolationType::SingleObject,
                             Box::new(self.clone()),
                             vec![use_relation],
                         ));

@@ -97,7 +97,7 @@ impl<'r> RuleViolation<'r> {
                     acc_file_line_number, acc_file_column_range, acc_file_line
                 );
             }
-            RuleViolationType::NotAvailable => {
+            RuleViolationType::SingleObject => {
                 let using_object = self.involved_object_uses[0].using_object();
                 let (in_file_line_number, in_file_column_range, in_file_line) =
                     find_text_range_in_file(

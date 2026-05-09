@@ -1,7 +1,7 @@
 #[derive(Debug, Copy, Clone)]
 pub enum RuleViolationType {
     SingleLocation,
-    NotAvailable,
+    SingleObject,
     Cycle,
     IncompleteLayerSpecification,
     LayerDoNotExist,
