@@ -1,11 +1,10 @@
 # ArchTest
 
-[![crates.io](https://img.shields.io/crates/v/cargo-archtest.svg)](https://crates.io/crates/cargo-archtest)
-[![crates.io](https://img.shields.io/crates/v/arch_test_core.svg)](https://crates.io/crates/arch_test_core)
-[![codecov](https://codecov.io/gh/Geigerkind/arch_test/branch/master/graph/badge.svg)](https://codecov.io/gh/Geigerkind/arch_test)
-[![license](https://img.shields.io/crates/l/arch_test_core.svg)](https://github.com/Geigerkind/arch_test/blob/master/LICENSE)
-[![Crates.io](https://img.shields.io/crates/d/cargo-archtest?label=cargo%20installs)](https://crates.io/crates/cargo-archtest)
-[![Crates.2io](https://img.shields.io/crates/d/arch_test_core?label=cargo%20installs)](https://crates.io/crates/arch_test_core)
+[![crates.io](https://img.shields.io/crates/v/cargo-archtest.svg)](https://crates.io/crates/cargo-archtest-cli)
+[![crates.io](https://img.shields.io/crates/v/arch_test_core.svg)](https://crates.io/crates/arch_validation_core)
+[![license](https://img.shields.io/crates/l/arch_test_core.svg)](https://github.com/magistrser/arch_test/blob/master/LICENCE)
+[![Crates.io](https://img.shields.io/crates/d/cargo-archtest?label=cargo%20installs)](https://crates.io/crates/cargo-archtest-cli)
+[![Crates.2io](https://img.shields.io/crates/d/arch_test_core?label=cargo%20installs)](https://crates.io/crates/arch_validation_core)
 
 <p align="center">
   <img src="https://github.com/Geigerkind/arch_test/blob/master/logo.png?raw=true" />
@@ -155,7 +154,30 @@ architecture.check_access_rules(&module_tree).err().unwrap().print(module_tree.t
 
 ## Rule Scoping
 
-> **Note:** If no `subdomain_names` are defined, `RuleScope::Subdomain` behaves as a no-op (the rule is never triggered since no module belongs to a subdomain).
+The `scope` field on every access rule controls **when** the rule fires. Three values:
+
+| Scope       | Enforced when…                                                                       |
+|-------------|--------------------------------------------------------------------------------------|
+| `Global`    | …anywhere in the project (default).                                                  |
+| `Parent`    | …source and target modules share the **same direct parent** (same directory).        |
+| `Subdomain` | …both modules belong to the **same subdomain** (defined via `subdomain_names`).      |
+
+**Examples:**
+
+```json
+// Only check this rule inside each subdomain independently
+{ "MayNotAccess": { "accessor": "domain", "accessed": ["infrastructure"], "scope": "Subdomain" } }
+// Enforce across the whole project — ignore subdomain boundaries
+{ "MayNotAccess": { "accessor": "domain", "accessed": ["infrastructure"], "scope": "Global" } }
+// Check only when both modules sit in the same directory
+{ "MayNotAccess": { "accessor": "parser", "accessed": ["analyzer"], "scope": "Parent" } }
+```
+
+**For `Available` (crate whitelist):** `Parent` restricts the check to modules whose **parent** is one of the target layers; `Subdomain` checks only modules inside any subdomain.
+
+A module's subdomain is the nearest ancestor whose name matches `subdomain_names`. If no subdomains are defined, `Subdomain` is a no-op (never triggers).
+
+> Legacy `when_same_parent` (boolean) still works: `true` → `Parent`, `false` → `Global`. `scope` takes precedence when both are set.
 
 ## Continuous integration
 
