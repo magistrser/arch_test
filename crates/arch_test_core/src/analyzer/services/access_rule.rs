@@ -12,6 +12,7 @@ use crate::analyzer::entities::RuleViolation;
 use crate::analyzer::services::cyclic_dependency::{
     contains_cyclic_dependency, contains_cyclic_dependency_on_any_level,
 };
+use crate::parser::domain_values::{ObjectType, UsableObject};
 use crate::parser::entities::ModuleNode;
 use crate::parser::materials::ModuleTree;
 use std::collections::hash_map::RandomState;
@@ -376,88 +377,113 @@ impl AccessRule for Available {
         excluded_modules: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
-        
-        // For each node in the tree
+
         for node in tree.iter() {
             let node_path = node.get_fully_qualified_path(tree);
-            
-            // Skip excluded modules
+
             if is_module_excluded(&node_path, excluded_modules) {
                 continue;
             }
-            
-            // Check if this node belongs to one of the target layers
+
             let node_layer = node.module_name();
             let node_parent = node.parent_index();
-            
-            // Determine if this node is in a target layer
+
             let is_in_target_layer = self.layer_names().contains(node_layer)
-                || node_parent.map_or(false, |parent_idx| {
+                || node_parent.is_some_and(|parent_idx| {
                     self.layer_names().contains(tree[parent_idx].module_name())
                 });
-            
+
             if !is_in_target_layer {
                 continue;
             }
-            
-            // Check when_same_parent logic
+
             if self.when_same_parent() {
-                // Only check if the node's parent matches one of the target layers
-                let parent_matches = node_parent.map_or(false, |parent_idx| {
+                let parent_matches = node_parent.is_some_and(|parent_idx| {
                     self.layer_names().contains(tree[parent_idx].module_name())
                 });
                 if !parent_matches {
                     continue;
                 }
             }
-            
-            // Check all usable objects in this module for external crate usage
+
             for usable_object in node.usable_objects() {
-                let object_name = usable_object.object_name();
-                
-                // Extract the root crate from the object name
-                if let Some(crate_name) = extract_root_crate(object_name) {
-                    // Skip local modules (crate::, self::, super::)
-                    if crate_name == "crate" || crate_name == "self" || crate_name == "super" {
-                        continue;
-                    }
-                    
+                if let Some(crate_name) = self.extract_root_crate(usable_object) {
                     // Check if this crate is allowed
                     if !self.allowed_crates().contains(&crate_name) {
+                        let node_path = node.get_fully_qualified_path(tree);
+                        let object_use = crate::parser::domain_values::ObjectUse::new(
+                            node.index(),
+                            node_path,
+                            usable_object.clone(),
+                        );
+                        let use_relation = crate::parser::domain_values::UseRelation::new(
+                            object_use.clone(),
+                            object_use,
+                        );
                         return Err(RuleViolation::new(
                             RuleViolationType::SingleLocation,
                             Box::new(self.clone()),
-                            vec![],
+                            vec![use_relation],
                         ));
                     }
                 }
             }
         }
-        
+
         Ok(())
     }
 
     fn validate(&self, layer_names: &HashSet<String, RandomState>) -> bool {
-        // All layer names in the rule must exist in the architecture
-        self.layer_names().iter().all(|layer| layer_names.contains(layer))
+        self.layer_names()
+            .iter()
+            .all(|layer| layer_names.contains(layer))
     }
 }
 
-/// Extract the root crate name from an object path.
-/// For example: "std::collections::HashMap" -> Some("std")
-///               "serde::Serialize" -> Some("serde")
-///               "crate::module::Item" -> None (local)
-fn extract_root_crate(object_name: &str) -> Option<String> {
-    // Skip local paths
-    if object_name.starts_with("crate::")
-        || object_name.starts_with("self::")
-        || object_name.starts_with("super::")
-        || object_name.starts_with("{{root}}") {
-        return None;
+impl Available {
+    /// Extract the root crate name from a usable object.
+    /// Only considers Use, RePublish, and ImplicitUse types.
+    /// Returns None for local definitions (Function, Struct, Enum, Trait, TypeAlias).
+    fn extract_root_crate(&self, usable_object: &UsableObject) -> Option<String> {
+        match usable_object.object_type() {
+            ObjectType::Use | ObjectType::RePublish | ObjectType::ImplicitUse => {
+                let object_name = usable_object.object_name();
+
+                // Skip local paths
+                if object_name.starts_with("crate::")
+                    || object_name.starts_with("self::")
+                    || object_name.starts_with("super::")
+                    || object_name.starts_with("{{root}}")
+                {
+                    return None;
+                }
+
+                // If no '::' in the name, we can't determine the crate
+                // (could be a short name of an imported item)
+                if !object_name.contains("::") {
+                    return None;
+                }
+
+                let crate_name = self.get_crate_name(object_name)?;
+
+                if self.is_local_module(crate_name) {
+                    return None;
+                }
+
+                Some(crate_name.to_string())
+            }
+            _ => None,
+        }
     }
-    
-    // Extract first segment before ::
-    object_name.split("::").next().map(|s| s.to_string())
+
+    fn get_crate_name<'a>(&self, object_name: &'a str) -> Option<&'a str> {
+        let crate_name = object_name.split("::").next()?;
+        Some(crate_name)
+    }
+
+    fn is_local_module(&self, crate_name: &str) -> bool {
+        crate_name == "crate" || crate_name == "self" || crate_name == "super"
+    }
 }
 
 fn has_parent_matching_name(

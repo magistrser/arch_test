@@ -2,3 +2,5 @@ test_project
 .idea
 target
 Cargo.lock
+.roo/*
+plans/*

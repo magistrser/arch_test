@@ -1,7 +1,8 @@
+use rstest::rstest;
 use velcro::hash_set;
 
 use crate::analyzer::domain_values::access_rules::{
-    MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
+    Available, MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
     NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess,
 };
 use crate::{Architecture, ModuleTree};
@@ -555,4 +556,50 @@ fn exclude_modules_complete_layer_specification() {
     assert!(architecture
         .check_complete_layer_specification(&module_tree)
         .is_ok());
+}
+
+#[rstest]
+#[case(
+    "std",
+    "src/analyzer/tests/access_rules/available_use_violation/main.rs"
+)]
+#[case(
+    "std",
+    "src/analyzer/tests/access_rules/available_type_violation/main.rs"
+)]
+fn test_checks_using_unavailable(#[case] crate_name: &str, #[case] module_path: &str) {
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
+            hash_set!["file_1".to_owned()],
+            hash_set![crate_name.to_owned()],
+            false,
+        ));
+    let module_tree = ModuleTree::new(module_path);
+    assert!(architecture.check_access_rules(&module_tree).is_err());
+    architecture
+        .check_access_rules(&module_tree)
+        .err()
+        .unwrap()
+        .print(module_tree.tree());
+}
+
+#[rstest]
+#[case(
+    "serde",
+    "src/analyzer/tests/access_rules/available_use_violation/main.rs"
+)]
+#[case(
+    "serde_json",
+    "src/analyzer/tests/access_rules/available_type_violation/main.rs"
+)]
+fn test_checks_available_libs(#[case] crate_name: &str, #[case] module_path: &str) {
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
+            hash_set!["file_1".to_owned()],
+            hash_set![crate_name.to_owned()],
+            false,
+        ));
+    let module_tree = ModuleTree::new(module_path);
+
+    assert!(architecture.check_access_rules(&module_tree).is_ok());
 }
