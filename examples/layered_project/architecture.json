@@ -1,0 +1,68 @@
+{
+    "layer_names": [
+        "domain",
+        "application",
+        "infrastructure",
+        "test_utils"
+    ],
+    "exclude_modules": [
+        "crate::domain::models",
+        "crate::test_utils::"
+    ],
+    "access_rules": [
+        "NoLayerCyclicDependencies",
+        "NoModuleCyclicDependencies",
+        "NoParentAccess",
+        {
+            "MayNotAccess": {
+                "accessor": "domain",
+                "accessed": [
+                    "application",
+                    "infrastructure"
+                ],
+                "scope": "Global"
+            }
+        },
+        {
+            "MayNotAccess": {
+                "accessor": "application",
+                "accessed": [
+                    "infrastructure"
+                ],
+                "scope": "Global"
+            }
+        },
+        {
+            "MayOnlyAccess": {
+                "accessor": "infrastructure",
+                "accessed": [
+                    "domain",
+                    "application",
+                    "infrastructure"
+                ],
+                "scope": "Global"
+            }
+        },
+        {
+            "MayOnlyBeAccessedBy": {
+                "accessors": [
+                    "application",
+                    "infrastructure",
+                    "test_utils"
+                ],
+                "accessed": "domain",
+                "scope": "Global"
+            }
+        },
+        {
+            "MayOnlyBeAccessedBy": {
+                "accessors": [
+                    "infrastructure",
+                    "test_utils"
+                ],
+                "accessed": "application",
+                "scope": "Global"
+            }
+        }
+    ]
+}

@@ -1,0 +1,58 @@
+{
+  "layer_names": [
+    "domain",
+    "application",
+    "infrastructure",
+    "billing",
+    "ordering",
+    "shared"
+  ],
+  "subdomain_names": [
+    "billing",
+    "ordering",
+    "shared"
+  ],
+  "exclude_modules": [
+    "crate::test_utils::"
+  ],
+  "access_rules": [
+    "NoLayerCyclicDependencies",
+    "NoModuleCyclicDependencies",
+    "NoParentAccess",
+    {
+      "MayNotAccess": {
+        "accessor": "domain",
+        "accessed": ["application", "infrastructure"],
+        "scope": "Subdomain"
+      }
+    },
+    {
+      "MayNotAccess": {
+        "accessor": "application",
+        "accessed": ["infrastructure"],
+        "scope": "Subdomain"
+      }
+    },
+    {
+      "MayOnlyAccess": {
+        "accessor": "infrastructure",
+        "accessed": ["domain", "application", "infrastructure"],
+        "scope": "Subdomain"
+      }
+    },
+    {
+      "MayOnlyBeAccessedBy": {
+        "accessors": ["application", "infrastructure"],
+        "accessed": "domain",
+        "scope": "Subdomain"
+      }
+    },
+    {
+      "MayOnlyBeAccessedBy": {
+        "accessors": ["infrastructure"],
+        "accessed": "application",
+        "scope": "Subdomain"
+      }
+    }
+  ]
+}
