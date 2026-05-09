@@ -1,10 +1,10 @@
 # ArchTest
 
-[![crates.io](https://img.shields.io/crates/v/cargo-archtest.svg)](https://crates.io/crates/cargo-archtest-cli)
-[![crates.io](https://img.shields.io/crates/v/arch_test_core.svg)](https://crates.io/crates/arch_validation_core)
+[![crates.io](https://img.shields.io/crates/v/cargo-archtest-cli.svg)](https://crates.io/crates/cargo-archtest-cli)
+[![crates.io](https://img.shields.io/crates/v/arch_validation_core.svg)](https://crates.io/crates/arch_validation_core)
 [![license](https://img.shields.io/crates/l/arch_test_core.svg)](https://github.com/magistrser/arch_test/blob/master/LICENCE)
-[![Crates.io](https://img.shields.io/crates/d/cargo-archtest?label=cargo%20installs)](https://crates.io/crates/cargo-archtest-cli)
-[![Crates.2io](https://img.shields.io/crates/d/arch_test_core?label=cargo%20installs)](https://crates.io/crates/arch_validation_core)
+[![Crates.io](https://img.shields.io/crates/d/cargo-archtest-cli?label=cargo%20installs)](https://crates.io/crates/cargo-archtest-cli)
+[![Crates.2io](https://img.shields.io/crates/d/arch_validation_core?label=cargo%20installs)](https://crates.io/crates/arch_validation_core)
 
 <p align="center">
   <img src="https://github.com/Geigerkind/arch_test/blob/master/logo.png?raw=true" />
