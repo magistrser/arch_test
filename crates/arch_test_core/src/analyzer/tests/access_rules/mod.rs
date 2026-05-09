@@ -700,6 +700,19 @@ fn available_deep_nesting_allows_std_and_serde() {
 }
 
 #[test]
+fn available_does_not_flag_local_module_references() {
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
+            hash_set!["file_1".to_owned()],
+            hash_set!["std".to_owned()], // vehicle_payload NOT in whitelist
+            RuleScope::Global,
+        ));
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/available_local_module_reference/main.rs");
+    assert!(architecture.check_access_rules(&module_tree).is_ok());
+}
+
+#[test]
 fn available_does_not_flag_self_method_calls() {
     let architecture =
         Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(

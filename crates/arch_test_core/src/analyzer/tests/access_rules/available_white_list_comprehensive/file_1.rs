@@ -32,12 +32,9 @@ use crate::my_module::my_function;
 use crate::my_module::MyType;
 use crate::my_module::{MyType as LocalType, MY_CONST};
 
-// Note: Relative imports without crate:: prefix (like `use my_module::...`)
-// are treated as external crates by the current implementation
-// They would need to be added to white_list or use crate:: prefix
-// TODO fix this
-// use my_module::my_another_function;
-// use my_module::{MyAnotherType, ANOTHER_CONST};
+// Relative imports without crate:: prefix - now correctly recognized as local modules
+use my_module::my_another_function;
+use my_module::{MyAnotherType, ANOTHER_CONST};
 
 // Self path (current module)
 use self::inner_module::InnerType;

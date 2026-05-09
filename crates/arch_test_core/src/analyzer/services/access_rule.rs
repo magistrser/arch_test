@@ -440,6 +440,11 @@ impl AccessRule for Available {
         let tree = module_tree.tree();
         let mut violations = Vec::new();
 
+        // Build set of all local module names from the project tree
+        // This is used to detect imports of local modules vs external crates
+        let local_module_names: HashSet<&str> =
+            tree.iter().map(|node| node.module_name().as_str()).collect();
+
         for node in tree.iter() {
             let node_path = node.get_fully_qualified_path(tree);
 
@@ -472,7 +477,9 @@ impl AccessRule for Available {
             }
 
             for usable_object in node.usable_objects() {
-                if let Some(crate_name) = self.extract_root_crate(usable_object) {
+                if let Some(crate_name) =
+                    self.extract_root_crate(usable_object, &local_module_names)
+                {
                     if !self.allowed_crates().contains(&crate_name) {
                         let node_path = node.get_fully_qualified_path(tree);
                         let object_use = crate::parser::domain_values::ObjectUse::new(
@@ -512,7 +519,11 @@ impl Available {
     /// Extract the root crate name from a usable object.
     /// Only considers Use, RePublish, and ImplicitUse types.
     /// Returns None for local definitions (Function, Struct, Enum, Trait, TypeAlias).
-    fn extract_root_crate(&self, usable_object: &UsableObject) -> Option<String> {
+    fn extract_root_crate(
+        &self,
+        usable_object: &UsableObject,
+        local_module_names: &HashSet<&str>,
+    ) -> Option<String> {
         match usable_object.object_type() {
             ObjectType::Use | ObjectType::RePublish | ObjectType::ImplicitUse => {
                 let object_name = usable_object.object_name();
@@ -535,7 +546,7 @@ impl Available {
 
                 let crate_name = self.get_crate_name(object_name)?;
 
-                if self.is_local_module(crate_name) {
+                if self.is_local_module(crate_name) || local_module_names.contains(crate_name) {
                     return None;
                 }
 
@@ -551,7 +562,10 @@ impl Available {
     }
 
     fn is_local_module(&self, crate_name: &str) -> bool {
-        crate_name == "crate" || crate_name == "self" || crate_name == "Self" || crate_name == "super"
+        crate_name == "crate"
+            || crate_name == "self"
+            || crate_name == "Self"
+            || crate_name == "super"
     }
 }
 
