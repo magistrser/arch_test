@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -8,17 +8,34 @@ use crate::analyzer::domain_values::RuleViolationType;
 use crate::parser::domain_values::UseRelation;
 use crate::parser::entities::ModuleNode;
 
-#[derive(Debug)]
+pub struct DeclaredLayerValidationInfo {
+    pub missing_layers: Vec<String>,
+    pub missing_subdomains: Vec<String>,
+    pub nested_under_undeclared_subdomain: Vec<(String, String)>,
+}
+
+impl fmt::Debug for DeclaredLayerValidationInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "DeclaredLayerValidationInfo {{")?;
+        writeln!(f, "  missing_layers: {:?}", self.missing_layers)?;
+        writeln!(f, "  missing_subdomains: {:?}", self.missing_subdomains)?;
+        writeln!(f, "  nested_under_undeclared_subdomain: {:?}", self.nested_under_undeclared_subdomain)?;
+        write!(f, "}}")
+    }
+}
+
+
+#[derive(fmt::Debug)]
 pub struct RuleViolation<'r> {
     violation_type: RuleViolationType,
-    access_rule: Box<dyn Debug + 'r>,
+    access_rule: Box<dyn fmt::Debug + 'r>,
     involved_object_uses: Vec<UseRelation>,
 }
 
 impl<'r> RuleViolation<'r> {
     pub fn new(
         violation_type: RuleViolationType,
-        access_rule: Box<dyn Debug + 'r>,
+        access_rule: Box<dyn fmt::Debug + 'r>,
         involved_object_uses: Vec<UseRelation>,
     ) -> Self {
         RuleViolation {
@@ -36,7 +53,7 @@ impl<'r> RuleViolation<'r> {
         &self.involved_object_uses
     }
 
-    pub fn access_rule(&self) -> &(dyn Debug + 'r) {
+    pub fn access_rule(&self) -> &(dyn fmt::Debug + 'r) {
         &self.access_rule
     }
 
@@ -140,6 +157,10 @@ impl<'r> RuleViolation<'r> {
                     );
                     println!(" ⮟ ");
                 }
+            }
+            RuleViolationType::DeclaredLayerNotFound => {
+                println!("ERROR: Declared layers or subdomains not found in project structure.");
+                println!("{:?}", self.access_rule);
             }
         }
     }

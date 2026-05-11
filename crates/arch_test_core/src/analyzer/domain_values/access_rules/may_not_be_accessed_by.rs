@@ -29,7 +29,7 @@ impl MayNotBeAccessedBy {
     pub fn accessed(&self) -> &String {
         &self.accessed
     }
-    
+
     pub fn scope(&self) -> &RuleScope {
         &self.scope
     }

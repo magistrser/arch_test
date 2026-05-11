@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::analyzer::domain_values::RuleViolationType;
-use crate::analyzer::entities::RuleViolation;
+use crate::analyzer::entities::{DeclaredLayerValidationInfo, RuleViolation};
 use crate::analyzer::services::AccessRule;
 use crate::parser::entities::ModuleNode;
 use crate::parser::materials::ModuleTree;
@@ -45,7 +45,7 @@ impl<'r> Architecture<'r> {
         self.subdomain_names = subdomain_names;
         self
     }
-    
+
     pub fn with_excluded_modules(mut self, excluded_modules: HashSet<String>) -> Self {
         self.excluded_modules = excluded_modules;
         self
@@ -72,7 +72,7 @@ impl<'r> Architecture<'r> {
     pub fn subdomain_names(&self) -> &HashSet<String> {
         &self.subdomain_names
     }
-    
+
     pub fn check_access_rules(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation<'_>> {
         for access_rule in self.access_rules.iter() {
             access_rule.check(module_tree, &self.excluded_modules, &self.subdomain_names)?;
@@ -137,5 +137,89 @@ impl<'r> Architecture<'r> {
             }
         }
         false
+    }
+
+    /// Validates that all declared layers and subdomains exist in the project structure,
+    /// and that layers are not nested under undeclared directories.
+    ///
+    /// This is a critical check that should be performed before any other architecture checks.
+    /// Returns Ok if:
+    /// - All declared layers exist somewhere in the module tree
+    /// - All declared subdomains exist in the module tree
+    /// - No layer is nested under a directory that is neither a layer, a subdomain, nor the crate root
+    pub fn validate_declared_layers_exist(
+        &self,
+        module_tree: &ModuleTree,
+    ) -> Result<(), RuleViolation<'_>> {
+        let tree = module_tree.tree();
+
+        let existing_module_names: HashSet<&str> = tree
+            .iter()
+            .filter(|node| node.module_name() != "crate")
+            .map(|node| node.module_name().as_str())
+            .collect();
+
+        let missing_layers: Vec<String> = self
+            .layer_names
+            .iter()
+            .filter(|layer| !existing_module_names.contains(layer.as_str()))
+            .cloned()
+            .collect();
+
+        let missing_subdomains: Vec<String> = self
+            .subdomain_names
+            .iter()
+            .filter(|subdomain| !existing_module_names.contains(subdomain.as_str()))
+            .cloned()
+            .collect();
+
+        let mut nested_under_undeclared_subdomain: Vec<(String, String)> = Vec::new();
+
+        for layer_name in &self.layer_names {
+            for node in tree.iter() {
+                if node.module_name() != layer_name.as_str() {
+                    continue;
+                }
+
+                let mut current_idx = node.parent_index();
+
+                while let Some(parent_idx) = current_idx {
+                    let parent_name = tree[parent_idx].module_name();
+
+                    if parent_name == "crate" {
+                        break;
+                    }
+
+                    if self.layer_names.contains(parent_name) {
+                        current_idx = tree[parent_idx].parent_index();
+                        continue;
+                    }
+
+                    if self.subdomain_names.contains(parent_name) {
+                        break;
+                    }
+
+                    nested_under_undeclared_subdomain.push((layer_name.clone(), parent_name.clone()));
+                    break;
+                }
+            }
+        }
+
+        if missing_layers.is_empty()
+            && missing_subdomains.is_empty()
+            && nested_under_undeclared_subdomain.is_empty()
+        {
+            return Ok(());
+        }
+
+        Err(RuleViolation::new(
+            RuleViolationType::DeclaredLayerNotFound,
+            Box::new(DeclaredLayerValidationInfo {
+                missing_layers,
+                missing_subdomains,
+                nested_under_undeclared_subdomain,
+            }),
+            vec![],
+        ))
     }
 }

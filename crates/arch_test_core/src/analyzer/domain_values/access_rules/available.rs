@@ -36,7 +36,7 @@ impl Available {
     pub fn allowed_crates(&self) -> &HashSet<String> {
         &self.allowed_crates
     }
-    
+
     pub fn scope(&self) -> &RuleScope {
         &self.scope
     }

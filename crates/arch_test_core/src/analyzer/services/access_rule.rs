@@ -73,7 +73,8 @@ impl AccessRule for MayOnlyAccess {
                                     == node.parent_index()
                             }
                             RuleScope::Subdomain => {
-                                let source_sub = get_module_subdomain(node.index(), tree, subdomain_names);
+                                let source_sub =
+                                    get_module_subdomain(node.index(), tree, subdomain_names);
                                 let target_sub = get_module_subdomain(
                                     use_relation.used_object().node_index(),
                                     tree,
@@ -143,7 +144,8 @@ impl AccessRule for MayNotAccess {
                                     == node.parent_index()
                             }
                             RuleScope::Subdomain => {
-                                let source_sub = get_module_subdomain(node.index(), tree, subdomain_names);
+                                let source_sub =
+                                    get_module_subdomain(node.index(), tree, subdomain_names);
                                 let target_sub = get_module_subdomain(
                                     use_relation.used_object().node_index(),
                                     tree,
@@ -213,7 +215,8 @@ impl AccessRule for MayOnlyBeAccessedBy {
                                     == node.parent_index()
                             }
                             RuleScope::Subdomain => {
-                                let source_sub = get_module_subdomain(node.index(), tree, subdomain_names);
+                                let source_sub =
+                                    get_module_subdomain(node.index(), tree, subdomain_names);
                                 let target_sub = get_module_subdomain(
                                     use_relation.used_object().node_index(),
                                     tree,
@@ -281,7 +284,8 @@ impl AccessRule for MayNotBeAccessedBy {
                                     == node.parent_index()
                             }
                             RuleScope::Subdomain => {
-                                let source_sub = get_module_subdomain(node.index(), tree, subdomain_names);
+                                let source_sub =
+                                    get_module_subdomain(node.index(), tree, subdomain_names);
                                 let target_sub = get_module_subdomain(
                                     use_relation.used_object().node_index(),
                                     tree,
@@ -442,8 +446,10 @@ impl AccessRule for Available {
 
         // Build set of all local module names from the project tree
         // This is used to detect imports of local modules vs external crates
-        let local_module_names: HashSet<&str> =
-            tree.iter().map(|node| node.module_name().as_str()).collect();
+        let local_module_names: HashSet<&str> = tree
+            .iter()
+            .map(|node| node.module_name().as_str())
+            .collect();
 
         for node in tree.iter() {
             let node_path = node.get_fully_qualified_path(tree);

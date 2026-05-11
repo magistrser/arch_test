@@ -29,7 +29,7 @@ impl MayNotAccess {
     pub fn accessed(&self) -> &HashSet<String> {
         &self.accessed
     }
-    
+
     pub fn scope(&self) -> &RuleScope {
         &self.scope
     }

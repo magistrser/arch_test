@@ -64,6 +64,11 @@ pub fn check_architecture(directory_path: &str, check_for_complete_layer_specifi
             std::process::exit(1);
         }
 
+        if let Err(err) = architecture.validate_declared_layers_exist(&module_tree) {
+            err.print(module_tree.tree());
+            std::process::exit(1);
+        }
+
         // Check access rules
         if let Err(err) = architecture.check_access_rules(&module_tree) {
             err.print(module_tree.tree());

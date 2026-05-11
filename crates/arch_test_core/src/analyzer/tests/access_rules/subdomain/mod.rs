@@ -119,16 +119,16 @@ fn test_get_module_subdomain_cross_subdomain() {
 }
 #[test]
 fn subdomain_complete_layer_specification_passes() {
-    let architecture = Architecture::new(hash_set![
-        "domain".to_owned(),
-        "infrastructure".to_owned(),
-    ])
-    .with_subdomain_names(hash_set![
-        "fixation_processing".to_owned(),
-        "fixation_view".to_owned(),
-    ]);
+    let architecture =
+        Architecture::new(hash_set!["domain".to_owned(), "infrastructure".to_owned(),])
+            .with_subdomain_names(hash_set![
+                "fixation_processing".to_owned(),
+                "fixation_view".to_owned(),
+            ]);
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/subdomain/main.rs");
-    assert!(architecture.check_complete_layer_specification(&module_tree).is_ok());
+    assert!(architecture
+        .check_complete_layer_specification(&module_tree)
+        .is_ok());
 }
 
 #[test]
@@ -148,12 +148,13 @@ fn flat_layer_direction_still_works_with_new_api() {
 #[test]
 fn subdomain_scope_is_noop_without_subdomain_names() {
     // Without subdomain_names, Subdomain scope should not fire
-    let architecture = Architecture::new(hash_set!["domain".to_owned(), "infrastructure".to_owned()])
-        .with_access_rule(MayNotAccess::new(
-            "infrastructure".to_owned(),
-            hash_set!["domain".to_owned()],
-            RuleScope::Subdomain,
-        ));
+    let architecture =
+        Architecture::new(hash_set!["domain".to_owned(), "infrastructure".to_owned()])
+            .with_access_rule(MayNotAccess::new(
+                "infrastructure".to_owned(),
+                hash_set!["domain".to_owned()],
+                RuleScope::Subdomain,
+            ));
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/subdomain/main.rs");
     // Subdomain scope without subdomain_names → no subdomain found → always skip → OK
     assert!(architecture.check_access_rules(&module_tree).is_ok());
