@@ -1,27 +1,27 @@
 [package]
 name = "cargo-archtest-cli"
-version = "0.1.22"
+version = "0.2.1"
 edition = "2018"
 authors = ["Tom Dymel <tom@dymel.dev>"]
 description = "CLI of arch_test_core for rule based architecture tests"
 license = "AGPL-3.0"
 keywords = ["architecture", "test", "plugin", "cargo", "subcommand"]
-categories = ["command-line-utilities", "development-tools", "development-tools::cargo-plugins", "development-tools::testing"]
+categories = [
+    "command-line-utilities",
+    "development-tools",
+    "development-tools::cargo-plugins",
+    "development-tools::testing",
+]
 repository = "https://github.com/magistrser/arch_test.git"
 readme = "../../README.md"
-include = [
-    "src/",
-    "architecture.json",
-    "../../README.md",
-    "../../LICENCE"
-]
+include = ["src/", "architecture.json", "../../README.md", "../../LICENCE"]
 
 [[bin]]
 name = "cargo-archtest"
 path = "src/main.rs"
 
 [dependencies]
-arch_validation_core = { path = "../arch_test_core", version = "0.1.15" }
+arch_validation_core = { path = "../arch_test_core", version = "0.2.1" }
 structopt = "0.3.26"
 serde = "1.0"
 serde_derive = "1.0"
