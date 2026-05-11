@@ -6,6 +6,7 @@ pub struct Money {
     pub currency: Currency,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Currency {
     USD,
