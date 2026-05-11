@@ -199,7 +199,8 @@ impl<'r> Architecture<'r> {
                         break;
                     }
 
-                    nested_under_undeclared_subdomain.push((layer_name.clone(), parent_name.clone()));
+                    nested_under_undeclared_subdomain
+                        .push((layer_name.clone(), parent_name.clone()));
                     break;
                 }
             }

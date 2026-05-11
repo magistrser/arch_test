@@ -7,10 +7,7 @@ use crate::Architecture;
 #[test]
 fn root_level_layers_pass() {
     // Test layers at root level using layer_dependency_direction tree (application, infra)
-    let architecture = Architecture::new(hash_set![
-        "application".to_owned(),
-        "infra".to_owned(),
-    ]);
+    let architecture = Architecture::new(hash_set!["application".to_owned(), "infra".to_owned(),]);
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/layer_dependency_direction/main.rs");
 
@@ -42,7 +39,10 @@ fn missing_layer_fails() {
     assert!(result.is_err());
 
     let err = result.unwrap_err();
-    assert_eq!(err.violation_type(), RuleViolationType::DeclaredLayerNotFound);
+    assert_eq!(
+        err.violation_type(),
+        RuleViolationType::DeclaredLayerNotFound
+    );
 }
 
 /// Test that a missing subdomain causes an error.
@@ -58,7 +58,10 @@ fn missing_subdomain_fails() {
     assert!(result.is_err());
 
     let err = result.unwrap_err();
-    assert_eq!(err.violation_type(), RuleViolationType::DeclaredLayerNotFound);
+    assert_eq!(
+        err.violation_type(),
+        RuleViolationType::DeclaredLayerNotFound
+    );
 }
 
 /// Test that a layer nested under an undeclared subdomain causes an error.
@@ -74,14 +77,17 @@ fn nested_under_undeclared_subdomain_fails() {
     assert!(result.is_err());
 
     let err = result.unwrap_err();
-    assert_eq!(err.violation_type(), RuleViolationType::DeclaredLayerNotFound);
+    assert_eq!(
+        err.violation_type(),
+        RuleViolationType::DeclaredLayerNotFound
+    );
 }
 
 #[test]
 fn nested_under_declared_subdomain_passes() {
     // Declare both the layer and ALL subdomains it lives under (tree has both fixation_processing and fixation_view)
-    let architecture = Architecture::new(hash_set!["domain".to_owned()])
-        .with_subdomain_names(hash_set![
+    let architecture =
+        Architecture::new(hash_set!["domain".to_owned()]).with_subdomain_names(hash_set![
             "fixation_processing".to_owned(),
             "fixation_view".to_owned()
         ]);
@@ -94,23 +100,23 @@ fn nested_under_declared_subdomain_passes() {
 #[test]
 fn layer_under_layer_passes() {
     // Flat tree with root level layers - declaring them should pass (no undeclared nesting)
-    let architecture = Architecture::new(hash_set![
-        "application".to_owned(),
-        "infra".to_owned(),
-    ]);
+    let architecture = Architecture::new(hash_set!["application".to_owned(), "infra".to_owned(),]);
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/layer_dependency_direction/main.rs");
 
     let result = architecture.validate_declared_layers_exist(&module_tree);
-    assert!(result.is_ok(), "Layers at root level should pass (no nesting issue)");
+    assert!(
+        result.is_ok(),
+        "Layers at root level should pass (no nesting issue)"
+    );
 }
 
 /// Test that existing subdomain passes validation.
 #[test]
 fn existing_subdomain_passes() {
     // Using the subdomain test structure where fixation_processing exists
-    let architecture = Architecture::new(hash_set!["domain".to_owned()])
-        .with_subdomain_names(hash_set![
+    let architecture =
+        Architecture::new(hash_set!["domain".to_owned()]).with_subdomain_names(hash_set![
             "fixation_processing".to_owned(),
             "fixation_view".to_owned()
         ]);

@@ -19,11 +19,14 @@ impl fmt::Debug for DeclaredLayerValidationInfo {
         writeln!(f, "DeclaredLayerValidationInfo {{")?;
         writeln!(f, "  missing_layers: {:?}", self.missing_layers)?;
         writeln!(f, "  missing_subdomains: {:?}", self.missing_subdomains)?;
-        writeln!(f, "  nested_under_undeclared_subdomain: {:?}", self.nested_under_undeclared_subdomain)?;
+        writeln!(
+            f,
+            "  nested_under_undeclared_subdomain: {:?}",
+            self.nested_under_undeclared_subdomain
+        )?;
         write!(f, "}}")
     }
 }
-
 
 #[derive(fmt::Debug)]
 pub struct RuleViolation<'r> {
