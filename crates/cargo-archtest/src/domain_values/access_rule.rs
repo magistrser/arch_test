@@ -38,10 +38,6 @@ pub enum AccessRule {
     Available {
         layer_names: Vec<String>,
         allowed_crates: Vec<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        scope: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        when_same_parent: Option<bool>,
     },
     Restricted {
         layer_names: Vec<String>,

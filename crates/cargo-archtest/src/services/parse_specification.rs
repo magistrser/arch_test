@@ -88,14 +88,10 @@ pub fn parse_specification(specification_path: &Path) -> Result<Architecture<'_>
             AccessRule::Available {
                 layer_names,
                 allowed_crates,
-                scope,
-                when_same_parent,
             } => {
-                let effective_scope = resolve_rule_scope(scope, when_same_parent);
                 architecture = architecture.with_access_rule(Available::new(
                     hash_set![..layer_names],
                     hash_set![..allowed_crates],
-                    effective_scope,
                 ))
             }
             AccessRule::Restricted {

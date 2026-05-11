@@ -599,7 +599,6 @@ fn test_checks_using_unavailable(#[case] crate_name: &str, #[case] module_path: 
         Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
             hash_set!["file_1".to_owned()],
             hash_set![crate_name.to_owned()],
-            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new(module_path);
     assert!(architecture.check_access_rules(&module_tree).is_err());
@@ -624,7 +623,6 @@ fn test_checks_available_libs(#[case] crate_name: &str, #[case] module_path: &st
         Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
             hash_set!["file_1".to_owned()],
             hash_set![crate_name.to_owned()],
-            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new(module_path);
 
@@ -639,7 +637,6 @@ fn available_white_list_comprehensive_positive() {
         Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
             hash_set!["file_1".to_owned()],
             hash_set!["std".to_owned(), "serde_json".to_owned()], // Only external crates
-            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new(
         "src/analyzer/tests/access_rules/available_white_list_comprehensive/main.rs",
@@ -658,7 +655,6 @@ fn available_white_list_comprehensive_missing_external_crate(#[case] white_list:
         Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
             hash_set!["file_1".to_owned()],
             white_list, // Missing serde_json
-            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new(
         "src/analyzer/tests/access_rules/available_white_list_comprehensive/main.rs",
@@ -683,7 +679,6 @@ fn available_deep_nesting(
         Architecture::new(hash_set![layer.to_owned()]).with_access_rule(Available::new(
             hash_set![layer.to_owned()],
             white_list.iter().map(|s| (*s).to_owned()).collect(),
-            RuleScope::Global,
         ));
     let module_tree =
         ModuleTree::new("src/analyzer/tests/access_rules/available_deep_nesting/main.rs");
@@ -719,7 +714,6 @@ fn available_does_not_flag_local_references(
         Architecture::new(hash_set![layer.to_owned()]).with_access_rule(Available::new(
             hash_set![layer.to_owned()],
             white_list.iter().map(|s| (*s).to_owned()).collect(),
-            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new(module_path);
     assert!(architecture.check_access_rules(&module_tree).is_ok());
@@ -815,7 +809,6 @@ fn conflicting_rules_detected() {
         .with_access_rule(Available::new(
             hash_set!["file_1".to_owned()],
             hash_set!["std".to_owned()],
-            RuleScope::Global,
         ))
         .with_access_rule(Restricted::new(
             hash_set!["file_1".to_owned()],
@@ -839,7 +832,6 @@ fn available_deep_nesting_flat_structure_still_works() {
         Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Available::new(
             hash_set!["file_1".to_owned()],
             hash_set!["std".to_owned(), "serde_json".to_owned()],
-            RuleScope::Global,
         ));
     let module_tree = ModuleTree::new(
         "src/analyzer/tests/access_rules/available_white_list_comprehensive/main.rs",

@@ -448,7 +448,7 @@ impl AccessRule for Available {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
-        subdomain_names: &HashSet<String>,
+        _subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         let mut violations = Vec::new();
@@ -472,23 +472,6 @@ impl AccessRule for Available {
 
             if !is_in_target_layer {
                 continue;
-            }
-
-            match self.scope() {
-                RuleScope::Parent => {
-                    let parent_matches =
-                        has_parent_matching_name(self.layer_names(), node.index(), tree);
-                    if !parent_matches {
-                        continue;
-                    }
-                }
-                RuleScope::Subdomain => {
-                    let node_sub = get_module_subdomain(node.index(), tree, subdomain_names);
-                    if node_sub.is_none() {
-                        continue;
-                    }
-                }
-                RuleScope::Global => {}
             }
 
             for usable_object in node.usable_objects() {
