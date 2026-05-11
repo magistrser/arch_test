@@ -48,6 +48,7 @@
                 "accessors": [
                     "application",
                     "infrastructure",
+                    "domain",
                     "test_utils"
                 ],
                 "accessed": "domain",
@@ -58,6 +59,7 @@
             "MayOnlyBeAccessedBy": {
                 "accessors": [
                     "infrastructure",
+                    "application",
                     "test_utils"
                 ],
                 "accessed": "application",

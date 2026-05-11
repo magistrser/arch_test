@@ -3,6 +3,7 @@ use crate::shared::domain::money::Money;
 #[derive(Debug, Clone)]
 pub struct InvoiceId(pub u64);
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Invoice {
     pub id: InvoiceId,
@@ -10,6 +11,7 @@ pub struct Invoice {
     pub status: InvoiceStatus,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvoiceStatus {
     Draft,

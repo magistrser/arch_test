@@ -3,5 +3,6 @@
 members = [
     "crates/arch_test_core",
     "crates/cargo-archtest",
-    "examples/example_test"
+    "examples/domain_decomposition",
+    "examples/layered_project"
 ]

@@ -1,5 +1,6 @@
 use crate::domain::models::{LineItem, Order, OrderId, OrderStatus};
 
+#[allow(dead_code)]
 pub fn order_fixture() -> Order {
     Order {
         id: OrderId(42),
@@ -10,6 +11,7 @@ pub fn order_fixture() -> Order {
     }
 }
 
+#[allow(dead_code)]
 pub fn line_item_fixture() -> LineItem {
     LineItem {
         product_name: "Test Product".into(),

@@ -1,5 +1,6 @@
 use crate::domain::models::{LineItem, Order, OrderId, OrderStatus};
 
+#[allow(dead_code)]
 pub struct OrderBuilder {
     id: Option<OrderId>,
     customer_name: Option<String>,
@@ -8,6 +9,7 @@ pub struct OrderBuilder {
     status: Option<OrderStatus>,
 }
 
+#[allow(dead_code)]
 impl OrderBuilder {
     pub fn new() -> Self {
         OrderBuilder {
@@ -41,7 +43,10 @@ impl OrderBuilder {
 
     pub fn build(self) -> Order {
         let total = self.total.unwrap_or_else(|| {
-            self.items.iter().map(|i| i.unit_price * i.quantity as f64).sum()
+            self.items
+                .iter()
+                .map(|i| i.unit_price * i.quantity as f64)
+                .sum()
         });
         Order {
             id: self.id.unwrap_or(OrderId(0)),

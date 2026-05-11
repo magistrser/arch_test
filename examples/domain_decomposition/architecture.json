@@ -42,7 +42,7 @@
     },
     {
       "MayOnlyBeAccessedBy": {
-        "accessors": ["application", "infrastructure"],
+        "accessors": ["application", "infrastructure", "domain"],
         "accessed": "domain",
         "scope": "Subdomain"
       }

@@ -1,8 +1,10 @@
 use crate::ordering::domain::order::{Order, OrderId, OrderStatus};
 use crate::ordering::infrastructure::order_repo::OrderRepository;
 
+#[allow(dead_code)]
 pub struct CancelOrderUseCase;
 
+#[allow(dead_code)]
 impl CancelOrderUseCase {
     pub fn execute(repo: &impl OrderRepository, order_id: OrderId) -> Result<Order, String> {
         let mut order = repo.find_by_id(order_id).ok_or("Order not found")?;

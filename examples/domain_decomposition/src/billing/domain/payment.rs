@@ -1,8 +1,10 @@
 use crate::shared::domain::money::Money;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PaymentId(pub u64);
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Payment {
     pub id: PaymentId,
@@ -11,9 +13,15 @@ pub struct Payment {
     pub method: PaymentMethod,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum PaymentMethod {
     CreditCard,
     BankTransfer,
     PayPal,
+}
+
+#[allow(dead_code)]
+pub trait PaymentProcessor {
+    fn charge(&self, amount: Money, method: PaymentMethod) -> Result<(), String>;
 }

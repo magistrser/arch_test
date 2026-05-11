@@ -2,11 +2,13 @@ use crate::ordering::domain::order::{Order, OrderId};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+#[allow(dead_code)]
 pub trait OrderRepository {
     fn find_by_id(&self, id: OrderId) -> Option<Order>;
     fn save(&self, order: &Order);
 }
 
+#[allow(dead_code)]
 pub struct InMemoryOrderRepository {
     store: RwLock<HashMap<u64, Order>>,
 }
@@ -31,6 +33,9 @@ impl OrderRepository for InMemoryOrderRepository {
     }
 
     fn save(&self, order: &Order) {
-        self.store.write().unwrap().insert(order.id.0, order.clone());
+        self.store
+            .write()
+            .unwrap()
+            .insert(order.id.0, order.clone());
     }
 }

@@ -6,6 +6,7 @@ pub struct CreateOrderRequest {
     pub items: Vec<LineItem>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct OrderResponse {
     pub id: OrderId,

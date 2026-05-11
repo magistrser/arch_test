@@ -1,2 +1,2 @@
-pub mod money;
 pub mod address;
+pub mod money;
