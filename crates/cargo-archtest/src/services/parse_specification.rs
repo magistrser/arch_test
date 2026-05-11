@@ -4,7 +4,7 @@ use std::path::Path;
 
 use arch_validation_core::access_rules::{
     Available, MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
-    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, RuleScope,
+    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, Restricted, RuleScope,
 };
 use arch_validation_core::hash_set;
 use arch_validation_core::Architecture;
@@ -96,6 +96,15 @@ pub fn parse_specification(specification_path: &Path) -> Result<Architecture<'_>
                     hash_set![..layer_names],
                     hash_set![..allowed_crates],
                     effective_scope,
+                ))
+            }
+            AccessRule::Restricted {
+                layer_names,
+                restricted_crates,
+            } => {
+                architecture = architecture.with_access_rule(Restricted::new(
+                    hash_set![..layer_names],
+                    hash_set![..restricted_crates],
                 ))
             }
         }

@@ -6,4 +6,5 @@ pub enum RuleViolationType {
     IncompleteLayerSpecification,
     LayerDoNotExist,
     DeclaredLayerNotFound,
+    ConflictingRules,
 }

@@ -1,0 +1,12 @@
+{
+    "layer_names": ["restricted_layer"],
+    "access_rules": [
+        "NoParentAccess",
+        {
+            "Restricted": {
+                "layer_names": ["restricted_layer"],
+                "restricted_crates": ["serde_json"]
+            }
+        }
+    ]
+}

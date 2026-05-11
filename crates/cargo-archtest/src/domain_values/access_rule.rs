@@ -43,4 +43,8 @@ pub enum AccessRule {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         when_same_parent: Option<bool>,
     },
+    Restricted {
+        layer_names: Vec<String>,
+        restricted_crates: Vec<String>,
+    },
 }

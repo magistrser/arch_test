@@ -18,6 +18,9 @@ It applies static analyses on the specified rust project to extract use relation
 * Prohibit parent access
 * Define layer relationships like `MayNotAccess`, `MayOnlyAccess`, `MayNotBeAccessedBy`, `MayOnlyBeAccessedBy`
 * Restrict external crate usage with `Available` rule (white_list) — specify which external crates (including std) each layer is allowed to use
+* **Forbid** external crate usage with `Restricted` rule (black_list) — specify which external crates each layer is **not 
+allowed** to use
+* **Conflict detection** — `Available` and `Restricted` rules on the same layer are automatically detected as conflicting
 * **Subdomain scoping** — group modules into logical subdomains and enforce rules within subdomain boundaries (via `RuleScope::Subdomain`)
 * **Rule scoping** — control whether rules apply globally, within the same parent module, or within the same subdomain (via [`RuleScope`](crates/arch_test_core/src/analyzer/domain_values/access_rules/mod.rs:10-20) enum)
 * Exclude specific modules from architecture checks (supports exact match and prefix matching)
@@ -86,6 +89,12 @@ Example:
         "allowed_crates": ["std", "serde"],
         "scope": "Global"
       }
+    },
+    {
+      "Restricted": {
+        "layer_names": ["domain"],
+        "restricted_crates": ["serde"]
+      }
     }
   ]
 }
@@ -106,7 +115,7 @@ Afterwards you check it for failures.
 ```rust
 use arch_validation_core::access_rules::{
     MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
-    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, RuleScope,
+    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, Restricted, RuleScope,
 };
 use arch_validation_core::{hash_set, Architecture, ModuleTree};
 
@@ -133,6 +142,10 @@ let architecture = Architecture::new(hash_set![
         hash_set!["parser".to_owned()],
         hash_set!["std".to_owned(), "serde".to_owned()],
         RuleScope::Global,
+    ))
+    .with_access_rule(Restricted::new(
+        hash_set!["domain".to_owned()],
+        hash_set!["serde".to_owned()],
     ));
 let module_tree = ModuleTree::new("src/lib.rs");
 assert!(architecture.validate_access_rules().is_ok());

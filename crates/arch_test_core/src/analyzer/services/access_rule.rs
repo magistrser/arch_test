@@ -1,3 +1,4 @@
+use std::collections::hash_map::RandomState;
 use std::collections::HashSet;
 use std::fmt::Debug;
 
@@ -5,7 +6,7 @@ use velcro::hash_set;
 
 use crate::analyzer::domain_values::access_rules::{
     Available, MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
-    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, RuleScope,
+    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, Restricted, RuleScope,
 };
 use crate::analyzer::domain_values::RuleViolationType;
 use crate::analyzer::entities::RuleViolation;
@@ -15,12 +16,13 @@ use crate::analyzer::services::cyclic_dependency::{
 use crate::parser::domain_values::{ObjectType, UsableObject};
 use crate::parser::entities::ModuleNode;
 use crate::parser::materials::ModuleTree;
-use std::collections::hash_map::RandomState;
 
-/// Check if a node is the root crate module (lib.rs or main.rs)
-/// The root crate module is identified by having no parent and being named "crate"
-fn is_root_crate_module(node: &ModuleNode) -> bool {
-    node.parent_index().is_none() && node.module_name() == "crate"
+/// Categorizes access rules for conflict detection purposes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuleCategory {
+    Available,
+    Restricted,
+    Other,
 }
 
 pub trait AccessRule: Debug {
@@ -31,6 +33,13 @@ pub trait AccessRule: Debug {
         subdomain_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>>;
     fn validate(&self, layer_names: &HashSet<String>) -> bool;
+    /// Returns the category of this rule for conflict detection.
+    fn rule_category(&self) -> RuleCategory {
+        RuleCategory::Other
+    }
+    fn layer_names(&self) -> Option<&HashSet<String>> {
+        None
+    }
 }
 
 impl AccessRule for MayOnlyAccess {
@@ -484,7 +493,7 @@ impl AccessRule for Available {
 
             for usable_object in node.usable_objects() {
                 if let Some(crate_name) =
-                    self.extract_root_crate(usable_object, &local_module_names)
+                    extract_root_crate_from_object(usable_object, &local_module_names)
                 {
                     if !self.allowed_crates().contains(&crate_name) {
                         let node_path = node.get_fully_qualified_path(tree);
@@ -519,59 +528,92 @@ impl AccessRule for Available {
             .iter()
             .all(|layer| layer_names.contains(layer))
     }
+
+    fn rule_category(&self) -> RuleCategory {
+        RuleCategory::Available
+    }
+
+    fn layer_names(&self) -> Option<&HashSet<String>> {
+        Some(self.layer_names())
+    }
 }
 
-impl Available {
-    /// Extract the root crate name from a usable object.
-    /// Only considers Use, RePublish, and ImplicitUse types.
-    /// Returns None for local definitions (Function, Struct, Enum, Trait, TypeAlias).
-    fn extract_root_crate(
+impl AccessRule for Restricted {
+    fn check(
         &self,
-        usable_object: &UsableObject,
-        local_module_names: &HashSet<&str>,
-    ) -> Option<String> {
-        match usable_object.object_type() {
-            ObjectType::Use | ObjectType::RePublish | ObjectType::ImplicitUse => {
-                let object_name = usable_object.object_name();
+        module_tree: &ModuleTree,
+        excluded_modules: &HashSet<String>,
+        _subdomain_names: &HashSet<String>,
+    ) -> Result<(), RuleViolation<'_>> {
+        let tree = module_tree.tree();
+        let mut violations = Vec::new();
 
-                // Skip local paths
-                if object_name.starts_with("crate::")
-                    || object_name.starts_with("self::")
-                    || object_name.starts_with("Self::")
-                    || object_name.starts_with("super::")
-                    || object_name.starts_with("{{root}}")
-                {
-                    return None;
-                }
+        // Build set of all local module names from the project tree
+        // This is used to detect imports of local modules vs external crates
+        let local_module_names: HashSet<&str> = tree
+            .iter()
+            .map(|node| node.module_name().as_str())
+            .collect();
 
-                // If no '::' in the name, we can't determine the crate
-                // (could be a short name of an imported item)
-                if !object_name.contains("::") {
-                    return None;
-                }
+        for node in tree.iter() {
+            let node_path = node.get_fully_qualified_path(tree);
 
-                let crate_name = self.get_crate_name(object_name)?;
-
-                if self.is_local_module(crate_name) || local_module_names.contains(crate_name) {
-                    return None;
-                }
-
-                Some(crate_name.to_string())
+            if is_module_excluded(&node_path, excluded_modules) {
+                continue;
             }
-            _ => None,
+
+            // Check if node belongs to any of the target layers
+            let is_in_target_layer = self.layer_names().contains(node.module_name())
+                || has_parent_matching_name(self.layer_names(), node.index(), tree);
+
+            if !is_in_target_layer {
+                continue;
+            }
+
+            for usable_object in node.usable_objects() {
+                if let Some(crate_name) =
+                    extract_root_crate_from_object(usable_object, &local_module_names)
+                {
+                    if self.restricted_crates().contains(&crate_name) {
+                        let node_path = node.get_fully_qualified_path(tree);
+                        let object_use = crate::parser::domain_values::ObjectUse::new(
+                            node.index(),
+                            node_path,
+                            usable_object.clone(),
+                        );
+                        let use_relation = crate::parser::domain_values::UseRelation::new(
+                            object_use.clone(),
+                            object_use,
+                        );
+                        violations.push(use_relation);
+                    }
+                }
+            }
         }
+
+        if !violations.is_empty() {
+            return Err(RuleViolation::new(
+                RuleViolationType::SingleObject,
+                Box::new(self.clone()),
+                violations,
+            ));
+        }
+
+        Ok(())
     }
 
-    fn get_crate_name<'a>(&self, object_name: &'a str) -> Option<&'a str> {
-        let crate_name = object_name.split("::").next()?;
-        Some(crate_name)
+    fn validate(&self, layer_names: &HashSet<String, RandomState>) -> bool {
+        self.layer_names()
+            .iter()
+            .all(|layer| layer_names.contains(layer))
     }
 
-    fn is_local_module(&self, crate_name: &str) -> bool {
-        crate_name == "crate"
-            || crate_name == "self"
-            || crate_name == "Self"
-            || crate_name == "super"
+    fn rule_category(&self) -> RuleCategory {
+        RuleCategory::Restricted
+    }
+
+    fn layer_names(&self) -> Option<&HashSet<String>> {
+        Some(self.layer_names())
     }
 }
 
@@ -592,9 +634,7 @@ fn has_parent_matching_name(
 /// Find the nearest ancestor whose module_name is in subdomain_names.
 /// Walks up the tree from node to root.
 /// Returns None if no such ancestor exists (flat structure or no subdomains defined).
-// TODO
-#[allow(dead_code)]
-pub(crate) fn get_module_subdomain<'tree>(
+pub fn get_module_subdomain<'tree>(
     node_index: usize,
     tree: &'tree [ModuleNode],
     subdomain_names: &HashSet<String>,
@@ -624,4 +664,59 @@ fn is_module_excluded(fully_qualified_path: &str, excluded_modules: &HashSet<Str
         }
     }
     false
+}
+
+/// Check if a node is the root crate module (lib.rs or main.rs)
+/// The root crate module is identified by having no parent and being named "crate"
+fn is_root_crate_module(node: &ModuleNode) -> bool {
+    node.parent_index().is_none() && node.module_name() == "crate"
+}
+
+/// Extract the root crate name from a usable object.
+/// Only considers Use, RePublish, and ImplicitUse types.
+/// Returns None for local definitions (Function, Struct, Enum, Trait, TypeAlias).
+/// This is a shared free function used by both Available and Restricted rules.
+fn extract_root_crate_from_object(
+    usable_object: &UsableObject,
+    local_module_names: &HashSet<&str>,
+) -> Option<String> {
+    match usable_object.object_type() {
+        ObjectType::Use | ObjectType::RePublish | ObjectType::ImplicitUse => {
+            let object_name = usable_object.object_name();
+
+            // Skip local paths
+            if object_name.starts_with("crate::")
+                || object_name.starts_with("self::")
+                || object_name.starts_with("Self::")
+                || object_name.starts_with("super::")
+                || object_name.starts_with("{{root}}")
+            {
+                return None;
+            }
+
+            // If no '::' in the name, we can't determine the crate
+            // (could be a short name of an imported item)
+            if !object_name.contains("::") {
+                return None;
+            }
+
+            let crate_name = extract_crate_name(object_name)?;
+
+            if is_crate_local(crate_name) || local_module_names.contains(crate_name) {
+                return None;
+            }
+
+            Some(crate_name.to_string())
+        }
+        _ => None,
+    }
+}
+
+fn extract_crate_name(object_name: &str) -> Option<&str> {
+    let crate_name = object_name.split("::").next()?;
+    Some(crate_name)
+}
+
+fn is_crate_local(crate_name: &str) -> bool {
+    crate_name == "crate" || crate_name == "self" || crate_name == "Self" || crate_name == "super"
 }

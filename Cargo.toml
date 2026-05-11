@@ -3,6 +3,7 @@ members = [
     "crates/arch_test_core",
     "crates/cargo-archtest",
     "examples/domain_decomposition",
-    "examples/layered_project"
+    "examples/layered_project",
+    "examples/restricted_example"
 ]
 resolver = "2"

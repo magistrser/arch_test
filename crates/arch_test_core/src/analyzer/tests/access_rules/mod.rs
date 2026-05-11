@@ -8,7 +8,7 @@ use velcro::hash_set;
 
 use crate::analyzer::domain_values::access_rules::{
     Available, MayNotAccess, MayNotBeAccessedBy, MayOnlyAccess, MayOnlyBeAccessedBy,
-    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, RuleScope,
+    NoLayerCyclicDependencies, NoModuleCyclicDependencies, NoParentAccess, Restricted, RuleScope,
 };
 use crate::{Architecture, ModuleTree};
 
@@ -723,6 +723,114 @@ fn available_does_not_flag_local_references(
         ));
     let module_tree = ModuleTree::new(module_path);
     assert!(architecture.check_access_rules(&module_tree).is_ok());
+}
+
+// ============================================================================
+// Restricted rule tests
+// ============================================================================
+
+#[test]
+fn restricted_simple_violation() {
+    // Layer "file_1" has serde restricted
+    // file_1.rs uses serde::Serialize - should trigger violation
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Restricted::new(
+            hash_set!["file_1".to_owned()],
+            hash_set!["serde".to_owned()],
+        ));
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/restricted_simple_violation/main.rs");
+    assert!(architecture.check_access_rules(&module_tree).is_err());
+    architecture
+        .check_access_rules(&module_tree)
+        .err()
+        .unwrap()
+        .print(module_tree.tree());
+}
+
+#[test]
+fn restricted_comprehensive_positive() {
+    // Layer "file_1" has tokio restricted (not used in the file)
+    // file_1.rs uses std::collections::HashMap and serde_json - should NOT trigger violation
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Restricted::new(
+            hash_set!["file_1".to_owned()],
+            hash_set!["tokio".to_owned()],
+        ));
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/restricted_comprehensive/main.rs");
+    // tokio is not used, so this should pass
+    assert!(architecture.check_access_rules(&module_tree).is_ok());
+}
+
+#[test]
+fn restricted_comprehensive_negative() {
+    // Layer "file_1" has serde_json restricted
+    // file_1.rs uses serde_json::Value - should trigger violation
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Restricted::new(
+            hash_set!["file_1".to_owned()],
+            hash_set!["serde_json".to_owned()],
+        ));
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/restricted_comprehensive/main.rs");
+    assert!(architecture.check_access_rules(&module_tree).is_err());
+}
+
+#[test]
+fn restricted_multiple_crates() {
+    // Layer "file_1" has both serde and serde_json restricted
+    // file_1.rs uses serde_json::Value - should trigger violation
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Restricted::new(
+            hash_set!["file_1".to_owned()],
+            hash_set!["serde".to_owned(), "serde_json".to_owned()],
+        ));
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/restricted_comprehensive/main.rs");
+    assert!(architecture.check_access_rules(&module_tree).is_err());
+}
+
+#[test]
+fn restricted_ignores_local_modules() {
+    // Layer "file_1" has serde restricted
+    // file_1.rs uses crate::, self::, super:: imports - should NOT trigger violation
+    let architecture =
+        Architecture::new(hash_set!["file_1".to_owned()]).with_access_rule(Restricted::new(
+            hash_set!["file_1".to_owned()],
+            hash_set!["serde".to_owned()],
+        ));
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/restricted_comprehensive/main.rs");
+    // Local imports should be ignored by Restricted rule
+    // This file also uses serde_json which is NOT restricted here, so it passes
+    assert!(architecture.check_access_rules(&module_tree).is_ok());
+}
+
+#[test]
+fn conflicting_rules_detected() {
+    // Layer "file_1" has both Available (allowing only std) and Restricted (blocking serde)
+    // This should be detected as conflicting rules during validation
+    let architecture = Architecture::new(hash_set!["file_1".to_owned()])
+        .with_access_rule(Available::new(
+            hash_set!["file_1".to_owned()],
+            hash_set!["std".to_owned()],
+            RuleScope::Global,
+        ))
+        .with_access_rule(Restricted::new(
+            hash_set!["file_1".to_owned()],
+            hash_set!["serde".to_owned()],
+        ));
+
+    // validate_access_rules should detect the conflict
+    assert!(architecture.validate_access_rules().is_err());
+    let err = architecture.validate_access_rules().err().unwrap();
+    // Verify it's the ConflictingRules error
+    let violation_type = err.violation_type();
+    assert!(matches!(
+        violation_type,
+        crate::analyzer::domain_values::RuleViolationType::ConflictingRules
+    ));
 }
 
 #[test]

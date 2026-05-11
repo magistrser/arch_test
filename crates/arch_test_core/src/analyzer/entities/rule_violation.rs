@@ -71,6 +71,9 @@ impl<'r> RuleViolation<'r> {
             RuleViolationType::IncompleteLayerSpecification => {
                 println!("Layer specification is incomplete!");
             }
+            RuleViolationType::ConflictingRules => {
+                println!("Conflicting rules detected: Available and Restricted rules cannot be applied to the same layer.");
+            }
             RuleViolationType::SingleLocation => {
                 let using_object = self.involved_object_uses[0].using_object();
                 let used_object = self.involved_object_uses[0].used_object();

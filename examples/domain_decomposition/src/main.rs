@@ -19,6 +19,9 @@ fn main() {
     let order = PlaceOrderUseCase::execute(&repo, "test".to_string(), total).unwrap();
     let invoice = CreateInvoiceService::create_invoice(total);
 
-    println!("Created order id {} and invoice id {}", order.id.0, invoice.id.0);
+    println!(
+        "Created order id {} and invoice id {}",
+        order.id.0, invoice.id.0
+    );
     println!("Run `cargo test --test architecture_test` to validate the architecture.");
 }

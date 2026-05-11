@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::analyzer::domain_values::RuleViolationType;
 use crate::analyzer::entities::{DeclaredLayerValidationInfo, RuleViolation};
-use crate::analyzer::services::AccessRule;
+use crate::analyzer::services::{AccessRule, RuleCategory};
 use crate::parser::entities::ModuleNode;
 use crate::parser::materials::ModuleTree;
 
@@ -29,6 +29,8 @@ pub struct Architecture<'r> {
     subdomain_names: HashSet<String>,
     excluded_modules: HashSet<String>,
     access_rules: Vec<Box<dyn AccessRule + 'r>>,
+    available_layers: HashSet<String>,
+    restricted_layers: HashSet<String>,
 }
 
 impl<'r> Architecture<'r> {
@@ -38,6 +40,8 @@ impl<'r> Architecture<'r> {
             subdomain_names: HashSet::default(),
             excluded_modules: HashSet::default(),
             access_rules: Vec::default(),
+            available_layers: HashSet::default(),
+            restricted_layers: HashSet::default(),
         }
     }
 
@@ -52,6 +56,22 @@ impl<'r> Architecture<'r> {
     }
 
     pub fn with_access_rule(mut self, access_rule: impl AccessRule + 'r) -> Self {
+        // Track layers for Available and Restricted rules for conflict detection
+        if let Some(layer_names) = access_rule.layer_names() {
+            match access_rule.rule_category() {
+                RuleCategory::Available => {
+                    for layer_name in layer_names {
+                        self.available_layers.insert(layer_name.clone());
+                    }
+                }
+                RuleCategory::Restricted => {
+                    for layer_name in layer_names {
+                        self.restricted_layers.insert(layer_name.clone());
+                    }
+                }
+                RuleCategory::Other => {}
+            }
+        }
         self.access_rules.push(Box::new(access_rule));
         self
     }
@@ -66,6 +86,20 @@ impl<'r> Architecture<'r> {
                 ));
             }
         }
+
+        let conflicting: Vec<_> = self
+            .available_layers
+            .intersection(&self.restricted_layers)
+            .cloned()
+            .collect();
+        if !conflicting.is_empty() {
+            return Err(RuleViolation::new(
+                RuleViolationType::ConflictingRules,
+                Box::new(()) as Box<dyn std::fmt::Debug + 'r>,
+                vec![],
+            ));
+        }
+
         Ok(())
     }
 
