@@ -11,6 +11,7 @@ use crate::parser::entities::ModuleNode;
 pub struct DeclaredLayerValidationInfo {
     pub missing_layers: Vec<String>,
     pub missing_subdomains: Vec<String>,
+    pub layers_not_at_root: Vec<String>,
     pub nested_under_undeclared_subdomain: Vec<(String, String)>,
 }
 
@@ -19,6 +20,7 @@ impl fmt::Debug for DeclaredLayerValidationInfo {
         writeln!(f, "DeclaredLayerValidationInfo {{")?;
         writeln!(f, "  missing_layers: {:?}", self.missing_layers)?;
         writeln!(f, "  missing_subdomains: {:?}", self.missing_subdomains)?;
+        writeln!(f, "  layers_not_at_root: {:?}", self.layers_not_at_root)?;
         writeln!(
             f,
             "  nested_under_undeclared_subdomain: {:?}",

@@ -1,5 +1,6 @@
 use velcro::hash_set;
 
+use crate::analyzer::domain_values::access_rules::{MayNotAccess, RuleScope};
 use crate::analyzer::domain_values::RuleViolationType;
 use crate::parser::materials::ModuleTree;
 use crate::Architecture;
@@ -68,9 +69,10 @@ fn missing_subdomain_fails() {
 #[test]
 fn nested_under_undeclared_subdomain_fails() {
     // The subdomain/main.rs has modules like "domain" nested under "fixation_processing"
-    // But we only declare "domain" without declaring "fixation_processing" as subdomain
-    let architecture = Architecture::new(hash_set!["domain".to_owned()]);
-    // subdomain_names is empty - fixation_processing is not declared
+    // We declare "fixation_view" as subdomain but NOT "fixation_processing"
+    // So "domain" under "fixation_processing" should still fail
+    let architecture = Architecture::new(hash_set!["domain".to_owned()])
+        .with_subdomain_names(hash_set!["fixation_view".to_owned()]);
     let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/subdomain/main.rs");
 
     let result = architecture.validate_declared_layers_exist(&module_tree);
@@ -124,4 +126,49 @@ fn existing_subdomain_passes() {
 
     let result = architecture.validate_declared_layers_exist(&module_tree);
     assert!(result.is_ok(), "Existing subdomains should pass");
+}
+
+#[test]
+fn nested_non_subdomain_layer_at_root_passes() {
+    let architecture = Architecture::new(hash_set!["application".to_owned(), "infra".to_owned()]);
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/layer_dependency_direction/main.rs");
+
+    let result = architecture.validate_declared_layers_exist(&module_tree);
+    assert!(
+        result.is_ok(),
+        "Layers at root level should pass when subdomain_names is empty"
+    );
+}
+
+#[test]
+fn nested_non_subdomain_layer_not_at_root_fails() {
+    let architecture = Architecture::new(hash_set!["domain".to_owned()]);
+    let module_tree = ModuleTree::new("src/analyzer/tests/access_rules/subdomain/main.rs");
+
+    let result = architecture.validate_declared_layers_exist(&module_tree);
+    assert!(
+        result.is_err(),
+        "Layers nested under non-subdomain directories should fail when subdomain_names is empty"
+    );
+
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.violation_type(),
+        RuleViolationType::DeclaredLayerNotFound
+    );
+}
+
+#[test]
+fn nested_non_subdomain_layer_files_inside_are_found_via_parent() {
+    let architecture = Architecture::new(hash_set!["application".to_owned(), "infra".to_owned()])
+        .with_access_rule(MayNotAccess::new(
+            "application".to_owned(),
+            hash_set!["infra".to_owned()],
+            RuleScope::Global,
+        ));
+    let module_tree =
+        ModuleTree::new("src/analyzer/tests/access_rules/layer_dependency_direction/main.rs");
+
+    assert!(architecture.check_access_rules(&module_tree).is_err());
 }

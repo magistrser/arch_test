@@ -109,7 +109,12 @@ impl<'r> Architecture<'r> {
 
     pub fn check_access_rules(&self, module_tree: &ModuleTree) -> Result<(), RuleViolation<'_>> {
         for access_rule in self.access_rules.iter() {
-            access_rule.check(module_tree, &self.excluded_modules, &self.subdomain_names)?;
+            access_rule.check(
+                module_tree,
+                &self.excluded_modules,
+                &self.subdomain_names,
+                &self.layer_names,
+            )?;
         }
         Ok(())
     }
@@ -207,54 +212,94 @@ impl<'r> Architecture<'r> {
             .cloned()
             .collect();
 
-        let mut nested_under_undeclared_subdomain: Vec<(String, String)> = Vec::new();
+        // When subdomain_names is empty, layers must be direct children of crate root.
+        // Layers nested under other directories are not considered valid layers.
+        let mut layers_not_at_root: Vec<String> = Vec::new();
+        if self.subdomain_names.is_empty() {
+            for layer_name in &self.layer_names {
+                let found_at_root = tree.iter().any(|node| {
+                    node.module_name() == layer_name.as_str()
+                        && node.parent_index().is_some_and(|parent_idx| {
+                            tree[parent_idx].module_name() == "crate"
+                        })
+                });
 
-        for layer_name in &self.layer_names {
-            for node in tree.iter() {
-                if node.module_name() != layer_name.as_str() {
-                    continue;
-                }
-
-                let mut current_idx = node.parent_index();
-
-                while let Some(parent_idx) = current_idx {
-                    let parent_name = tree[parent_idx].module_name();
-
-                    if parent_name == "crate" {
-                        break;
-                    }
-
-                    if self.layer_names.contains(parent_name) {
-                        current_idx = tree[parent_idx].parent_index();
-                        continue;
-                    }
-
-                    if self.subdomain_names.contains(parent_name) {
-                        break;
-                    }
-
-                    nested_under_undeclared_subdomain
-                        .push((layer_name.clone(), parent_name.clone()));
-                    break;
+                if !found_at_root {
+                    layers_not_at_root.push(layer_name.clone());
                 }
             }
         }
 
-        if missing_layers.is_empty()
-            && missing_subdomains.is_empty()
-            && nested_under_undeclared_subdomain.is_empty()
-        {
-            return Ok(());
-        }
+        if !self.subdomain_names.is_empty() {
+            let mut nested_under_undeclared_subdomain: Vec<(String, String)> = Vec::new();
 
-        Err(RuleViolation::new(
-            RuleViolationType::DeclaredLayerNotFound,
-            Box::new(DeclaredLayerValidationInfo {
-                missing_layers,
-                missing_subdomains,
-                nested_under_undeclared_subdomain,
-            }),
-            vec![],
-        ))
+            for layer_name in &self.layer_names {
+                for node in tree.iter() {
+                    if node.module_name() != layer_name.as_str() {
+                        continue;
+                    }
+
+                    let mut current_idx = node.parent_index();
+
+                    while let Some(parent_idx) = current_idx {
+                        let parent_name = tree[parent_idx].module_name();
+
+                        if parent_name == "crate" {
+                            break;
+                        }
+
+                        if self.layer_names.contains(parent_name) {
+                            current_idx = tree[parent_idx].parent_index();
+                            continue;
+                        }
+
+                        if self.subdomain_names.contains(parent_name) {
+                            break;
+                        }
+
+                        nested_under_undeclared_subdomain
+                            .push((layer_name.clone(), parent_name.clone()));
+                        break;
+                    }
+                }
+            }
+
+            if missing_layers.is_empty()
+                && missing_subdomains.is_empty()
+                && nested_under_undeclared_subdomain.is_empty()
+            {
+                return Ok(());
+            }
+
+            Err(RuleViolation::new(
+                RuleViolationType::DeclaredLayerNotFound,
+                Box::new(DeclaredLayerValidationInfo {
+                    missing_layers,
+                    missing_subdomains,
+                    layers_not_at_root: vec![],
+                    nested_under_undeclared_subdomain,
+                }),
+                vec![],
+            ))
+        } else {
+            // subdomain_names is empty - check layers are at root level
+            if missing_layers.is_empty()
+                && missing_subdomains.is_empty()
+                && layers_not_at_root.is_empty()
+            {
+                return Ok(());
+            }
+
+            Err(RuleViolation::new(
+                RuleViolationType::DeclaredLayerNotFound,
+                Box::new(DeclaredLayerValidationInfo {
+                    missing_layers,
+                    missing_subdomains,
+                    layers_not_at_root,
+                    nested_under_undeclared_subdomain: vec![],
+                }),
+                vec![],
+            ))
+        }
     }
 }

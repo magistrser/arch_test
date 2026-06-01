@@ -31,6 +31,7 @@ pub trait AccessRule: Debug {
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
         subdomain_names: &HashSet<String>,
+        layer_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>>;
     fn validate(&self, layer_names: &HashSet<String>) -> bool;
     /// Returns the category of this rule for conflict detection.
@@ -48,6 +49,7 @@ impl AccessRule for MayOnlyAccess {
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
         subdomain_names: &HashSet<String>,
+        layer_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -55,8 +57,13 @@ impl AccessRule for MayOnlyAccess {
             if is_module_excluded(&node_path, excluded_modules) {
                 return false;
             }
-            node.module_name() == self.accessor()
-                || has_parent_matching_name(&hash_set![self.accessor().clone()], node.index(), tree)
+            is_node_in_layer(
+                self.accessor(),
+                node.index(),
+                tree,
+                subdomain_names,
+                layer_names,
+            )
         }) {
             if let Some(use_relation) = node
                 .use_relations(tree, module_tree.possible_uses(), false)
@@ -119,6 +126,7 @@ impl AccessRule for MayNotAccess {
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
         subdomain_names: &HashSet<String>,
+        layer_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -126,8 +134,13 @@ impl AccessRule for MayNotAccess {
             if is_module_excluded(&node_path, excluded_modules) {
                 return false;
             }
-            node.module_name() == self.accessor()
-                || has_parent_matching_name(&hash_set![self.accessor().clone()], node.index(), tree)
+            is_node_in_layer(
+                self.accessor(),
+                node.index(),
+                tree,
+                subdomain_names,
+                layer_names,
+            )
         }) {
             if let Some(use_relation) = node
                 .use_relations(tree, module_tree.possible_uses(), false)
@@ -190,6 +203,7 @@ impl AccessRule for MayOnlyBeAccessedBy {
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
         subdomain_names: &HashSet<String>,
+        layer_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -199,8 +213,9 @@ impl AccessRule for MayOnlyBeAccessedBy {
             }
             // Skip the root crate module (lib.rs/main.rs) - it's not a layer
             !is_root_crate_module(node)
-                && !self.accessors().contains(node.module_name())
-                && !has_parent_matching_name(self.accessors(), node.index(), tree)
+                && !self.accessors().iter().any(|layer| {
+                    is_node_in_layer(layer, node.index(), tree, subdomain_names, layer_names)
+                })
         }) {
             if let Some(use_relation) = node
                 .use_relations(tree, module_tree.possible_uses(), false)
@@ -261,6 +276,7 @@ impl AccessRule for MayNotBeAccessedBy {
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
         subdomain_names: &HashSet<String>,
+        layer_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -268,8 +284,9 @@ impl AccessRule for MayNotBeAccessedBy {
             if is_module_excluded(&node_path, excluded_modules) {
                 return false;
             }
-            self.accessors().contains(node.module_name())
-                || has_parent_matching_name(self.accessors(), node.index(), tree)
+            self.accessors().iter().any(|layer| {
+                is_node_in_layer(layer, node.index(), tree, subdomain_names, layer_names)
+            })
         }) {
             if let Some(use_relation) = node
                 .use_relations(tree, module_tree.possible_uses(), false)
@@ -330,6 +347,7 @@ impl AccessRule for NoParentAccess {
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
         _subdomain_names: &HashSet<String>,
+        _layer_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         for node in tree.iter().filter(|node| {
@@ -373,6 +391,7 @@ impl AccessRule for NoModuleCyclicDependencies {
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
         _subdomain_names: &HashSet<String>,
+        _layer_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         if let Some(involved) = contains_cyclic_dependency(module_tree) {
@@ -411,6 +430,7 @@ impl AccessRule for NoLayerCyclicDependencies {
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
         _subdomain_names: &HashSet<String>,
+        _layer_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         if let Some(involved) = contains_cyclic_dependency_on_any_level(module_tree) {
@@ -448,7 +468,8 @@ impl AccessRule for Available {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
-        _subdomain_names: &HashSet<String>,
+        subdomain_names: &HashSet<String>,
+        layer_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         let mut violations = Vec::new();
@@ -467,8 +488,9 @@ impl AccessRule for Available {
                 continue;
             }
 
-            let is_in_target_layer = self.layer_names().contains(node.module_name())
-                || has_parent_matching_name(self.layer_names(), node.index(), tree);
+            let is_in_target_layer = self.layer_names().iter().any(|layer| {
+                is_node_in_layer(layer, node.index(), tree, subdomain_names, layer_names)
+            });
 
             if !is_in_target_layer {
                 continue;
@@ -526,7 +548,8 @@ impl AccessRule for Restricted {
         &self,
         module_tree: &ModuleTree,
         excluded_modules: &HashSet<String>,
-        _subdomain_names: &HashSet<String>,
+        subdomain_names: &HashSet<String>,
+        layer_names: &HashSet<String>,
     ) -> Result<(), RuleViolation<'_>> {
         let tree = module_tree.tree();
         let mut violations = Vec::new();
@@ -546,8 +569,9 @@ impl AccessRule for Restricted {
             }
 
             // Check if node belongs to any of the target layers
-            let is_in_target_layer = self.layer_names().contains(node.module_name())
-                || has_parent_matching_name(self.layer_names(), node.index(), tree);
+            let is_in_target_layer = self.layer_names().iter().any(|layer| {
+                is_node_in_layer(layer, node.index(), tree, subdomain_names, layer_names)
+            });
 
             if !is_in_target_layer {
                 continue;
@@ -612,6 +636,32 @@ fn has_parent_matching_name(
         node_index = parent_index;
     }
     false
+}
+
+/// Check if a node belongs to a layer.
+/// When subdomain_names is empty, exact name match only works for nodes directly under crate root.
+/// When subdomain_names is not empty, exact name match works regardless of nesting level.
+/// has_parent_matching_name always works to find files inside a layer directory.
+fn is_node_in_layer(
+    layer_name: &str,
+    node_index: usize,
+    tree: &[ModuleNode],
+    subdomain_names: &HashSet<String>,
+    layer_names: &HashSet<String>,
+) -> bool {
+    let node = &tree[node_index];
+
+    if node.module_name() == layer_name {
+        if subdomain_names.is_empty() && layer_names.contains(layer_name) {
+            if let Some(parent_idx) = node.parent_index() {
+                return tree[parent_idx].module_name() == "crate";
+            }
+            return false;
+        }
+        return true;
+    }
+
+    has_parent_matching_name(&hash_set![layer_name.to_owned()], node_index, tree)
 }
 
 /// Find the nearest ancestor whose module_name is in subdomain_names.

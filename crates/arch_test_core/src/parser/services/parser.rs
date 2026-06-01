@@ -629,6 +629,7 @@ fn parse_file_rec(
         | SyntaxKind::CONST_PARAM
         | SyntaxKind::TYPE_BOUND_LIST
         | SyntaxKind::FOR_TYPE
+        | SyntaxKind::FOR_BINDER
         | SyntaxKind::TYPE_BOUND
         | SyntaxKind::MACRO_ITEMS
         | SyntaxKind::LET_ELSE
