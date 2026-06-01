@@ -16,5 +16,12 @@ pub enum Command {
             help = "Path to Cargo.toml"
         )]
         toml_path: String,
+        #[structopt(
+            short = "x",
+            long = "exclude-crate",
+            about = "Exclude a crate from architecture check (can be repeated)",
+            help = "Exclude a crate from architecture check (can be repeated)"
+        )]
+        exclude_crates: Vec<String>,
     },
 }

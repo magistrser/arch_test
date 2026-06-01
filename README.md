@@ -23,6 +23,7 @@ It applies static analyses on the specified rust project to extract use relation
 * **Subdomain scoping** — group modules into logical subdomains and enforce rules within subdomain boundaries (via `RuleScope::Subdomain`)
 * **Rule scoping** — control whether rules apply globally, within the same parent module, or within the same subdomain (via [`RuleScope`](crates/arch_test_core/src/analyzer/domain_values/access_rules/mod.rs:22-31) enum)
 * Exclude specific modules from architecture checks (supports exact match and prefix matching)
+* Exclude entire workspace crates from checking via `exclude_crates` in `architecture.json` or `--exclude-crate` CLI flag
 * And more, please consult the documentation.
 
 ## Install
@@ -50,6 +51,7 @@ Example:
   "layer_names": ["analyzer", "parser", "domain_values", "entities", "materials", "services", "tests", "utils"],
   "subdomain_names": ["subdomain_1", "subdomain_2"],
   "exclude_modules": ["crate::tests::integration", "crate::utils::helpers"],
+  "exclude_crates": ["libs/checksum_validator"],
   "access_rules": [
     "NoLayerCyclicDependencies",
     "NoModuleCyclicDependencies",

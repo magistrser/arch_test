@@ -8,4 +8,6 @@ pub struct Specification {
     pub access_rules: Vec<AccessRule>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exclude_modules: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exclude_crates: Option<Vec<String>>,
 }

@@ -136,3 +136,10 @@ fn read_file_content(file_path: &Path) -> Result<String, Failure> {
     file.read_to_string(&mut content).unwrap();
     Ok(content)
 }
+
+/// Lightweight parsing: deserialize Specification only, without building Architecture.
+/// Used to extract metadata (e.g., exclude_crates) from the root workspace configuration.
+pub fn parse_raw_specification(path: &Path) -> Result<Specification, Failure> {
+    let content = read_file_content(path)?;
+    serde_json::from_str(&content).map_err(|_| Failure::SpecificationCouldNotBeParsed)
+}

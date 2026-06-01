@@ -75,7 +75,7 @@ use std::path::Path;
 use structopt::StructOpt;
 
 use crate::domain_values::Command;
-use crate::services::check_architecture;
+use crate::services::{check_architecture, parse_raw_specification};
 
 mod domain_values;
 mod services;
@@ -87,6 +87,7 @@ fn main() {
     let Command::Archtest {
         check_for_complete_layer_specification,
         toml_path,
+        exclude_crates: cli_exclude_crates,
     } = Command::from_args();
     let toml_path = Path::new(&toml_path);
     if toml_path.exists() && toml_path.is_file() {
@@ -107,6 +108,23 @@ fn main() {
                     .to_string()
             }
         };
+
+        // Build the combined exclude list (CLI + specification)
+        let mut exclude_crates: Vec<String> = cli_exclude_crates;
+
+        // Try to read workspace-root architecture.json for exclude_crates
+        let root_arch_path = Path::new(&cargo_dir).join("architecture.json");
+        if root_arch_path.exists() {
+            if let Ok(spec) = parse_raw_specification(&root_arch_path) {
+                if let Some(ec) = spec.exclude_crates {
+                    for crate_path in ec {
+                        if !exclude_crates.contains(&crate_path) {
+                            exclude_crates.push(crate_path);
+                        }
+                    }
+                }
+            }
+        }
 
         // Read the file content first, then parse it. This avoids workspace resolution
         // which can fail when workspace.metadata is present but no workspace root exists.
@@ -145,6 +163,9 @@ fn main() {
                     if member.contains('*') {
                         println!("Can not interpret paths with '*'");
                         std::process::exit(1);
+                    } else if is_crate_excluded(&member, &exclude_crates) {
+                        println!("[Skip]: '{}' is excluded from architecture check", member);
+                        continue;
                     } else {
                         check_architecture(&member, check_for_complete_layer_specification);
                     }
@@ -160,4 +181,13 @@ fn main() {
     }
 
     println!("[Ok]: No architecture rules were violated!");
+}
+
+/// Checks if a workspace member path matches any excluded crate pattern.
+/// Supports exact match and prefix match.
+fn is_crate_excluded(member_path: &str, exclude_crates: &[String]) -> bool {
+    exclude_crates.iter().any(|ec| {
+        member_path == ec.as_str()
+            || member_path.starts_with(ec.as_str())
+    })
 }
