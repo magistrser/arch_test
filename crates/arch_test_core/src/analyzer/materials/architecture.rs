@@ -219,9 +219,9 @@ impl<'r> Architecture<'r> {
             for layer_name in &self.layer_names {
                 let found_at_root = tree.iter().any(|node| {
                     node.module_name() == layer_name.as_str()
-                        && node.parent_index().is_some_and(|parent_idx| {
-                            tree[parent_idx].module_name() == "crate"
-                        })
+                        && node
+                            .parent_index()
+                            .is_some_and(|parent_idx| tree[parent_idx].module_name() == "crate")
                 });
 
                 if !found_at_root {

@@ -186,8 +186,7 @@ fn main() {
 /// Checks if a workspace member path matches any excluded crate pattern.
 /// Supports exact match and prefix match.
 fn is_crate_excluded(member_path: &str, exclude_crates: &[String]) -> bool {
-    exclude_crates.iter().any(|ec| {
-        member_path == ec.as_str()
-            || member_path.starts_with(ec.as_str())
-    })
+    exclude_crates
+        .iter()
+        .any(|ec| member_path == ec.as_str() || member_path.starts_with(ec.as_str()))
 }
