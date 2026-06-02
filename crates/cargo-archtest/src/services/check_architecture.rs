@@ -65,8 +65,15 @@ pub fn check_architecture(directory_path: &str, check_for_complete_layer_specifi
         }
 
         if let Err(err) = architecture.validate_declared_layers_exist(&module_tree) {
+            let crate_name = Path::new(directory_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(directory_path);
+            println!(
+                "\n[WARNING] Crate '{}': declared layer validation failed:",
+                crate_name
+            );
             err.print(module_tree.tree());
-            std::process::exit(1);
         }
 
         // Check access rules

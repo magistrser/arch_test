@@ -167,7 +167,7 @@ impl<'r> RuleViolation<'r> {
                 }
             }
             RuleViolationType::DeclaredLayerNotFound => {
-                println!("ERROR: Declared layers or subdomains not found in project structure.");
+                println!("WARNING: Declared layers or subdomains not found in project structure.");
                 println!("{:?}", self.access_rule);
             }
         }
