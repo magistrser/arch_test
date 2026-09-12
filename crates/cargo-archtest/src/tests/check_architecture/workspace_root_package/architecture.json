@@ -1,0 +1,48 @@
+{
+  "layer_names": [
+    "domain",
+    "application",
+    "infrastructure",
+    "utils"
+  ],
+  "exclude_crates": ["libs/metrics"],
+  "access_rules": [
+    "NoModuleCyclicDependencies",
+    {
+      "MayNotAccess": {
+        "accessor": "utils",
+        "accessed": [
+          "application",
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "Available": {
+        "layer_names": ["domain"],
+        "allowed_crates": ["std", "chrono", "uuid", "serde"]
+      }
+    },
+    {
+      "MayOnlyBeAccessedBy": {
+        "accessors": ["domain", "application", "infrastructure"],
+        "accessed": "domain",
+        "when_same_parent": false
+      }
+    },
+    {
+      "MayOnlyBeAccessedBy": {
+        "accessors": ["application", "infrastructure"],
+        "accessed": "application",
+        "when_same_parent": false
+      }
+    },
+    {
+      "MayOnlyBeAccessedBy": {
+        "accessors": ["infrastructure"],
+        "accessed": "infrastructure",
+        "when_same_parent": false
+      }
+    }
+  ]
+}

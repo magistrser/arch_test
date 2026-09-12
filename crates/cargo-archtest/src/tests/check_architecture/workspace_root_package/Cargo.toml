@@ -1,0 +1,10 @@
+[package]
+name = "workspace-root-package"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+metrics = { path = "libs/metrics" }
+
+[workspace]
+members = ["libs/metrics"]

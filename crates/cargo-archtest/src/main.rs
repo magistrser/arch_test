@@ -155,11 +155,7 @@ fn main() {
         };
 
         if let Some(workspace) = toml.workspace {
-            if workspace.members.is_empty() {
-                // This is likely a package with workspace.metadata but not actually a workspace
-                check_architecture(&cargo_dir, check_for_complete_layer_specification);
-            } else {
-                for member in workspace.members {
+            for member in workspace.members {
                     if member.contains('*') {
                         println!("Can not interpret paths with '*'");
                         std::process::exit(1);
@@ -169,12 +165,9 @@ fn main() {
                     } else {
                         check_architecture(&member, check_for_complete_layer_specification);
                     }
-                }
-            }
-        } else {
-            // Use the directory containing Cargo.toml as the base directory
-            check_architecture(&cargo_dir, check_for_complete_layer_specification);
+                }   
         }
+        check_architecture(&cargo_dir, check_for_complete_layer_specification);
     } else {
         println!("Cargo.toml not found in the specified path!");
         std::process::exit(1);
