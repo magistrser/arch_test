@@ -19,8 +19,5 @@ fn run_check_architecture() {
 /// perform after iterating workspace members.
 #[test]
 fn run_check_architecture_workspace_root_package() {
-    check_architecture(
-        "src/tests/check_architecture/workspace_root_package",
-        true,
-    );
+    check_architecture("src/tests/check_architecture/workspace_root_package", true);
 }

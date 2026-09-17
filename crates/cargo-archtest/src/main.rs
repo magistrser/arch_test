@@ -156,16 +156,16 @@ fn main() {
 
         if let Some(workspace) = toml.workspace {
             for member in workspace.members {
-                    if member.contains('*') {
-                        println!("Can not interpret paths with '*'");
-                        std::process::exit(1);
-                    } else if is_crate_excluded(&member, &exclude_crates) {
-                        println!("[Skip]: '{}' is excluded from architecture check", member);
-                        continue;
-                    } else {
-                        check_architecture(&member, check_for_complete_layer_specification);
-                    }
-                }   
+                if member.contains('*') {
+                    println!("Can not interpret paths with '*'");
+                    std::process::exit(1);
+                } else if is_crate_excluded(&member, &exclude_crates) {
+                    println!("[Skip]: '{}' is excluded from architecture check", member);
+                    continue;
+                } else {
+                    check_architecture(&member, check_for_complete_layer_specification);
+                }
+            }
         }
         check_architecture(&cargo_dir, check_for_complete_layer_specification);
     } else {
