@@ -118,7 +118,7 @@ pub fn contains_cyclic_dependency_on_level(
         });
 
     let mut visited_nodes: Vec<UseRelation> = Vec::new();
-    for (_index, use_relations) in use_relations_per_level.iter() {
+    for use_relations in use_relations_per_level.values() {
         if use_relations
             .iter()
             .filter(|use_relation| {
