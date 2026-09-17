@@ -584,7 +584,6 @@ fn parse_file_rec(
         | SyntaxKind::CONTINUE_EXPR
         | SyntaxKind::BREAK_EXPR
         | SyntaxKind::LIFETIME_PARAM
-        | SyntaxKind::DOC_COMMENT
         | SyntaxKind::COMMENT
         | SyntaxKind::ERROR => {
             return None;
@@ -672,7 +671,7 @@ fn parse_use_paths(syntax_node: &SyntaxNode) -> (bool, Vec<(String, TextRange)>)
                     paths.append(&mut parse_use_tree(&child));
                 }
             }
-            SyntaxKind::DOC_COMMENT | SyntaxKind::COMMENT => {
+            SyntaxKind::COMMENT => {
                 // Doc comments and regular comments are not relevant for use analysis.
                 // They appear as children of USE nodes after ra_ap_syntax >= 0.0.352.
                 continue;

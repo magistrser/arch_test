@@ -13,7 +13,7 @@ include = ["src/", "architecture.json", "../../README.md", "../../LICENCE"]
 
 [dependencies]
 velcro = "0.5.3"
-ra_ap_syntax = "0.0.352"
+ra_ap_syntax = "0.0.348"
 itertools = "0.15.0"
 unicode-ident = "=1.0.24"
 
