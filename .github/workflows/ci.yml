@@ -60,7 +60,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-archtest-cli@0.2.3 --locked
+      - run: cargo install cargo-archtest-cli --locked
       - run: cargo archtest
 
   publish:
